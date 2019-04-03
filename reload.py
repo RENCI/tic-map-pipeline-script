@@ -47,6 +47,6 @@ def runPipeline():
 schedule.every(1).minute.do(runPipeline)
 
 while True:
-    print("starting job")
+    println("starting job")
     schedule.run_pending()
     time.sleep(1)

@@ -20,6 +20,8 @@ RUN tar zxvf spark-2.4.0-bin-hadoop2.7.tgz
 ENV PATH="/spark-2.4.0-bin-hadoop2.7/bin:${PATH}"
 ENV RELOAD_DATABASE=1
 RUN echo 12 > apt-get install csvkit -y
+COPY ["reload.py", "reload.py"]
+RUN pip3 install psycopg2
 
 ENTRYPOINT ["python3", "reload.py"]
 
