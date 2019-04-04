@@ -4,9 +4,11 @@
 # POSTGRES_USER
 # POSTGRES_PASSWORD
 # POSTGRES_HOST
+# POSTGRES_PORT
 # POSTGRES_DATABASE_NAME
+# POSTGRES_DUMP_PATH
 # build TIC preprocessing-assembly-1.0.jar from https://github.com/xu-hao/map-pipeline.git
-# need to mount backup dir to BACKUP_DIR
+# need to mount backup dir to POSTGRES_DUMP_PATH
 FROM ubuntu:18.04
 COPY ["TIC preprocessing-assembly-1.0.jar", "TIC preprocessing-assembly-1.0.jar"]
 COPY ["HEAL data mapping.csv", "HEAL data mapping.csv"]

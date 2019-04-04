@@ -18,7 +18,7 @@ dbport = os.environ["POSTGRES_PORT"]
 dbname = os.environ["POSTGRES_DATABASE_NAME"]
 reloaddb = os.environ["RELOAD_DATABASE"] == "1"
 s = os.environ["RELOAD_SCHEDULE"] == "1"
-backup_dir = os.environ["BACKUP_DIR"]
+backup_dir = os.environ["POSTGRES_DUMP_PATH"]
 
 assemblyPath = "TIC preprocessing-assembly-1.0.jar"
 mappingInputFilePath = "HEAL data mapping.csv"
