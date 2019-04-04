@@ -5,14 +5,20 @@ from psycopg2 import connect
 import schedule
 import time
 import requests
+import stat
+import datetime
+from pathlib import Path
 
+home = str(Path.home())
 redcapApplicationToken = os.environ["REDCAP_APPLICATION_TOKEN"]
 dbuser = os.environ["POSTGRES_USER"]
 dbpass = os.environ["POSTGRES_PASSWORD"]
 dbhost = os.environ["POSTGRES_HOST"]
+dbport = os.environ["POSTGRES_PORT"]
 dbname = os.environ["POSTGRES_DATABASE_NAME"]
 reloaddb = os.environ["RELOAD_DATABASE"] == "1"
 s = os.environ["RELOAD_SCHEDULE"] == "1"
+backup_dir = os.environ["BACKUP_DIR"]
 
 assemblyPath = "TIC preprocessing-assembly-1.0.jar"
 mappingInputFilePath = "HEAL data mapping.csv"
@@ -83,19 +89,27 @@ def runPipeline():
                    "--data_dictionary_input_file", dataDictionaryInputFilePath, "--output_dir", outputDirPath])
 
         if cp.returncode != 0:
-            sys.stderr.write("encountered an error: " + str(cp.returncode))
+            sys.stderr.write("pipeline encountered an error: " + str(cp.returncode))
             reloaddb2 = False
 
     if reloaddb2:
-        conn = connect(user=dbuser, password=dbpass, host=dbhost, dbname=dbname)
-        cursor = conn.cursor()
-        tables = list(filter(lambda x : not x.startswith("."), os.listdir("data/tables")))
-        for f in tables:
-            cursor.execute("DELETE FROM \"" + f + "\"")
-        cursor.close()
-        conn.commit()
-        conn.close()
-        cp = subprocess.run(["csvsql", "--db", "postgres://"+dbuser+":" + dbpass + "@" + dbhost +"/" + dbname, "--insert", "--no-create", "-p", "\\", "-e", "utf8"] + ["data/tables/" + x for x in tables])
+        with open(home + "/.pgpass", "w+") as f:
+            f.write(dbhost + ":" + dbport + ":" + dbname + ":" + dbuser + ":" + dbpass)
+        os.chmod(home + "/.pgpass", stat.S_IREAD | stat.S_IWRITE)
+        pgdumpfile = backup_dir + "/" + str(datetime.datetime.now())
+        cp = subprocess.run(["pg_dump", "-O", "-d", dbname, "-U", dbuser, "-h", dbhost, "-p", dbport, "-f", pgdumpfile])
+        if cp.returncode != 0:
+            sys.stderr.write("backup encountered an error: " + str(cp.returncode))
+        else:
+            conn = connect(user=dbuser, password=dbpass, host=dbhost, dbname=dbname)
+            cursor = conn.cursor()
+            tables = list(filter(lambda x : not x.startswith("."), os.listdir("data/tables")))
+            for f in tables:
+                cursor.execute("DELETE FROM \"" + f + "\"")
+            cursor.close()
+            conn.commit()
+            conn.close()
+            cp = subprocess.run(["csvsql", "--db", "postgres://"+dbuser+":" + dbpass + "@" + dbhost +"/" + dbname, "--insert", "--no-create", "-p", "\\", "-e", "utf8"] + ["data/tables/" + x for x in tables])
 
 
 if s:
