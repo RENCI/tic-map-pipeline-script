@@ -10,9 +10,9 @@
 # download "HEAL data mapping_finalv5.csv" from https://github.com/RENCI/HEAL-data-mapping/blob/0.1.0/HEAL%20data%20mapping_finalv5.csv rename it to HEAL data mapping.csv
 # need to mount backup dir to POSTGRES_DUMP_PATH
 FROM ubuntu:18.04
-COPY ["TIC preprocessing-assembly.jar", "TIC preprocessing-assembly.jar"]
-COPY ["HEAL data mapping.csv", "HEAL data mapping.csv"]
-COPY ["reload.py", "reload.py"]
+COPY ["TIC preprocessing-assembly.jar"]
+COPY ["HEAL data mapping.csv"]
+COPY ["reload.py"]
 
 RUN mkdir data
 
