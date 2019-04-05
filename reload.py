@@ -20,7 +20,7 @@ reloaddb = os.environ["RELOAD_DATABASE"] == "1"
 s = os.environ["RELOAD_SCHEDULE"] == "1"
 backup_dir = os.environ["POSTGRES_DUMP_PATH"]
 
-assemblyPath = "TIC preprocessing-assembly-1.0.jar"
+assemblyPath = "TIC preprocessing-assembly.jar"
 mappingInputFilePath = "HEAL data mapping.csv"
 dataInputFilePath = "redcap_export.json"
 dataDictionaryInputFilePath = "redcap_data_dictionary_export.json"
