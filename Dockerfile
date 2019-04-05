@@ -10,15 +10,15 @@
 # download "HEAL data mapping_finalv5.csv" from https://github.com/RENCI/HEAL-data-mapping/blob/0.1.0/HEAL%20data%20mapping_finalv5.csv rename it to HEAL data mapping.csv
 # need to mount backup dir to POSTGRES_DUMP_PATH
 FROM ubuntu:18.04
-COPY ["TIC preprocessing-assembly.jar"]
-COPY ["HEAL data mapping.csv"]
-COPY ["reload.py"]
+COPY ["TIC preprocessing-assembly.jar", "TIC preprocessing-assembly.jar"]
+COPY ["HEAL data mapping.csv", "HEAL data mapping.csv"]
+COPY ["reload.py", "reload.py"]
 
 RUN mkdir data
 
 RUN apt-get update && apt-get install -y wget gnupg
 
-RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ bionic-pgdg main" >> /etc/apt/sources.list.d/pgdg.list
+RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ bionic-pgdg main" | tee -a /etc/apt/sources.list.d/pgdg.list
 
 RUN wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
 
