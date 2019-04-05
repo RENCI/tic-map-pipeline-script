@@ -7,7 +7,8 @@
 # POSTGRES_PORT
 # POSTGRES_DATABASE_NAME
 # POSTGRES_DUMP_PATH
-# build TIC preprocessing-assembly-1.0.jar from https://github.com/xu-hao/map-pipeline.git
+# build TIC preprocessing-assembly-1.0.jar from https://github.com/RENCI/map-pipeline/tree/0.1.0
+# download "HEAL data mapping.csv" from https://github.com/RENCI/HEAL-data-mapping/blob/2b1041ca3c0d293cbcaa35a1bf5d073714fc68e2/HEAL%20data%20mapping_finalv5.csv
 # need to mount backup dir to POSTGRES_DUMP_PATH
 FROM ubuntu:18.04
 COPY ["TIC preprocessing-assembly-1.0.jar", "TIC preprocessing-assembly-1.0.jar"]
