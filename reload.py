@@ -83,7 +83,7 @@ def runPipeline():
             for chunk in r.iter_content(chunk_size=8192):
                 if chunk:  # filter out keep-alive new chunks
                     f.write(chunk)
-        if os.path.isdir("data/table"):
+        if os.path.isdir("data/tables"):
             for f in os.listdir("data/tables"):
                 os.remove("data/tables/" + f)
         cp = subprocess.run(["spark-submit", "--driver-memory", "2g", "--executor-memory", "2g", "--master", "local[*]", "--class", "tic.Transform2", assemblyPath,
