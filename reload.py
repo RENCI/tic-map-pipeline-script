@@ -89,9 +89,14 @@ def runPipeline():
                     f.write(chunk)
 
         data_dictionary_backup_path = backup_dir + "/redcap_data_dictionary/redcap_data_dictionary_export.json"
-        if not os.path.isfile(data_dictionary_backup_path) or not filecmp.cmp(dataDictionaryInputFilePath, data_dictionary_backup_path):
+        do_backup = False
+        if not os.path.isfile(data_dictionary_backup_path):
+            do_backup = True
+        elif not filecmp.cmp(dataDictionaryInputFilePath, data_dictionary_backup_path):
             mtime = os.path.getmtime(data_dictionary_backup_path)
             shutil.copy(data_dictionary_backup_path, data_dictionary_backup_path+str(mtime))
+            do_backup = True
+        if do_backup:
             shutil.copy(dataDictionaryInputFilePath, data_dictionary_backup_path)
 
         if os.path.isdir("data/tables"):
