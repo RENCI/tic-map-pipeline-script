@@ -8,6 +8,10 @@ import requests
 import stat
 import datetime
 from pathlib import Path
+import filecmp
+import shutil
+
+
 
 home = str(Path.home())
 redcapApplicationToken = os.environ["REDCAP_APPLICATION_TOKEN"]
@@ -83,6 +87,13 @@ def runPipeline():
             for chunk in r.iter_content(chunk_size=8192):
                 if chunk:  # filter out keep-alive new chunks
                     f.write(chunk)
+
+        data_dictionary_backup_path = backup_dir + "/redcap_data_dictionary/redcap_data_dictionary_export.json"
+        if not os.path.isfile(data_dictionary_backup_path) or not filecmp.cmp(dataDictionaryInputFilePath, data_dictionary_backup_path):
+            mtime = os.path.getmtime(data_dictionary_backup_path)
+            shutil.copy(data_dictionary_backup_path, data_dictionary_backup_path+str(mtime))
+            shutil.copy(dataDictionaryInputFilePath, data_dictionary_backup_path)
+
         if os.path.isdir("data/tables"):
             for f in os.listdir("data/tables"):
                 os.remove("data/tables/" + f)
