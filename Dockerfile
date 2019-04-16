@@ -10,9 +10,6 @@
 # download "HEAL data mapping_finalv5.csv" from https://github.com/RENCI/HEAL-data-mapping/blob/0.1.0/HEAL%20data%20mapping_finalv5.csv rename it to HEAL data mapping.csv
 # need to mount backup dir to POSTGRES_DUMP_PATH
 FROM ubuntu:18.04
-COPY ["TIC preprocessing-assembly.jar", "TIC preprocessing-assembly.jar"]
-COPY ["HEAL data mapping.csv", "HEAL data mapping.csv"]
-COPY ["reload.py", "reload.py"]
 
 RUN mkdir data
 
@@ -30,6 +27,10 @@ RUN tar zxvf spark-2.4.1-bin-hadoop2.7.tgz
 ENV PATH="/spark-2.4.1-bin-hadoop2.7/bin:${PATH}"
 ENV RELOAD_DATABASE=1
 ENV RELOAD_SCHEDULE=1
+
+COPY ["TIC preprocessing-assembly.jar", "TIC preprocessing-assembly.jar"]
+COPY ["HEAL data mapping.csv", "HEAL data mapping.csv"]
+COPY ["reload.py", "reload.py"]
 
 ENTRYPOINT ["python3", "reload.py"]
 
