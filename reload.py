@@ -130,7 +130,7 @@ def runPipeline():
             cursor.close()
             conn.commit()
             conn.close()
-            cp = subprocess.run(["csvsql", "--db", "postgres://"+dbuser+":" + dbpass + "@" + dbhost +"/" + dbname, "--insert", "--no-create", "-p", "\\", "-e", "utf8"] + ["data/tables/" + x for x in tables])
+            cp = subprocess.run(["csvsql", "--db", "postgres://"+dbuser+":" + dbpass + "@" + dbhost +"/" + dbname, "--insert", "--no-create", "-d", ",", "-e", "utf8"] + ["data/tables/" + x for x in tables])
 
 
 if s:
