@@ -1,0 +1,53 @@
+version: '3'
+
+services:
+  pipeline:
+    container_name: pmd-pipeline-reload-test
+    restart: always
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    image: pmd-pipeline-reload-test:0.2.0
+    environment:
+      POSTGRES_DATABASE_NAME: $POSTGRES_DB
+      POSTGRES_USER: $POSTGRES_USER
+      POSTGRES_PASSWORD: $POSTGRES_PASSWORD
+      POSTGRES_PORT: $POSTGRES_PORT    
+      POSTGRES_HOST: db
+      REDCAP_APPLICATION_TOKEN: $REDCAP_APPLICATION_TOKEN
+      REDCAP_URL_BASE: https://redcap:5000/api/
+      POSTGRES_DUMP_PATH: $POSTGRES_DUMP_PATH
+      RELOAD_SCHEDULE: $RELOAD_SCHEDULE
+      RELOAD_DATABASE: $RELOAD_DATABASE
+      SCHEDULE_RUN_TIME: $SCHEDULE_RUN_TIME
+    volumes:
+      - $POSTGRES_DUMP_PATH:/backup
+    depends_on:
+      - db
+      - redcap
+      
+  db:
+    container_name: pmd-pipeline-reload-test-db-mock
+    restart: always
+    image: postgres:11.2
+    environment:
+      POSTGRES_DB: $POSTGRES_DB
+      POSTGRES_USER: $POSTGRES_USER
+      POSTGRES_PASSWORD: $POSTGRES_PASSWORD
+      POSTGRES_PORT: $POSTGRES_PORT
+    expose:
+      - ${POSTGRES_PORT}
+
+  redcap:
+    container_name: pmd-pipeline-reload-test-redcap-mock
+    restart: always
+    build:
+      context: ./redcap/
+      dockerfile: Dockerfile
+    image: pmd-pipeline-reload-test-redcap-mock:0.2.0
+    environment:
+      REDCAP_APPLICATION_TOKEN: $REDCAP_APPLICATION_TOKEN
+    expose:
+      - 5000
+
+

@@ -1,3 +1,4 @@
+# version 0.2.0
 # need to set the following env vars
 # REDCAP_APPLICATION_TOKEN
 # POSTGRES_USER
@@ -6,6 +7,8 @@
 # POSTGRES_PORT
 # POSTGRES_DATABASE_NAME
 # POSTGRES_DUMP_PATH
+# REDCAP_URL_BASE default should be set to https://redcap.vanderbilt.edu/api/
+# SCHEDULE_RUN_TIME default should be set to 00:00
 # build TIC preprocessing-assembly-0.1.0.jar from https://github.com/RENCI/map-pipeline/tree/0.1.0 rename it to TIC preprocessing-assembly.jar
 # download "HEAL data mapping_finalv5.csv" from https://github.com/RENCI/HEAL-data-mapping/blob/0.1.0/HEAL%20data%20mapping_finalv5.csv rename it to HEAL data mapping.csv
 # need to mount backup dir to POSTGRES_DUMP_PATH
