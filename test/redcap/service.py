@@ -25,4 +25,6 @@ def api():
         return send_from_directory(".", "metadata.json", mimetype="application/json")
 
 if __name__ == "__main__":
-    app.run(ssl_context="adhoc")
+    app.run(
+        # ssl_context="adhoc",
+        host="0.0.0.0")

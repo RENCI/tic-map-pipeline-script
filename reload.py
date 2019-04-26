@@ -52,7 +52,7 @@ def download(ctx, headers, data, output):
         os.remove(output)
     print("downloading", output)
     with open(output, "wb+") as f:
-        r = requests.post(ctx["redcapUrlBase"], data=data, headers=headers, stream=True)
+        r = requests.post(ctx["redcapURLBase"], data=data, headers=headers, stream=True)
         for chunk in r.iter_content(chunk_size=8192):
             if chunk:  # filter out keep-alive new chunks
                 f.write(chunk)
@@ -88,40 +88,66 @@ def etl(ctx):
         return True
 
     
+def downloadData(ctx):
+    data = {
+        "token" : ctx["redcapApplicationToken"],
+        "content" : "record",
+        "format" : "json",
+        "type" : "flat",
+        # "records[0]" : "1",
+        # fields[0]=
+        "rawOrLabel" : "raw",
+        "rawOrLabelHeaders" : "raw",
+        "exportCheckboxLabel" : "false",
+        "exportSurveyFields" : "false",
+        "exportDataAccessGroups" : "false",
+        "returnFormat" : "json"
+    }
+    headers = {
+        "Content-Type" : "application/x-www-form-urlencoded",
+        "Accept" : "application/json"
+    }
+    download(ctx, headers, data, ctx["dataInputFilePath"])
+
+
+def downloadDataDictionary(ctx):
+    data = {
+        "token" : ctx["redcapApplicationToken"],
+        "content" : "metadata",
+        "format" : "json",
+        "returnFormat" : "json"
+    }
+    headers = {
+        "Content-Type" : "application/x-www-form-urlencoded",
+        "Accept" : "application/json"
+    }
+    download(ctx, headers, data, ctx["dataDictionaryInputFilePath"])
+
+
+def context():
+    return {
+        "home": str(Path.home()),
+        "redcapApplicationToken": os.environ["REDCAP_APPLICATION_TOKEN"],
+        "dbuser": os.environ["POSTGRES_USER"],
+        "dbpass": os.environ["POSTGRES_PASSWORD"],
+        "dbhost": os.environ["POSTGRES_HOST"],
+        "dbport": os.environ["POSTGRES_PORT"],
+        "dbname": os.environ["POSTGRES_DATABASE_NAME"],
+        "reloaddb": os.environ["RELOAD_DATABASE"] == "1",
+        "backupDir": os.environ["POSTGRES_DUMP_PATH"],
+        "redcapURLBase": os.environ["REDCAP_URL_BASE"],
+        "assemblyPath": "TIC preprocessing-assembly.jar",
+        "mappingInputFilePath": "HEAL data mapping.csv",
+        "dataInputFilePath": "redcap_export.json",
+        "dataDictionaryInputFilePath": "redcap_data_dictionary_export.json",
+        "outputDirPath": "data",
+    }
+
+
 def runPipeline(ctx):
     if reloaddb:
-        data = {
-            "token" : ctx["redcapApplicationToken"],
-            "content" : "record",
-            "format" : "json",
-            "type" : "flat",
-            # "records[0]" : "1",
-            # fields[0]=
-            "rawOrLabel" : "raw",
-            "rawOrLabelHeaders" : "raw",
-            "exportCheckboxLabel" : "false",
-            "exportSurveyFields" : "false",
-            "exportDataAccessGroups" : "false",
-            "returnFormat" : "json"
-        }
-        headers = {
-            "Content-Type" : "application/x-www-form-urlencoded",
-            "Accept" : "application/json"
-        }
-        download(headers, data, ctx["dataInputFilePath"])
-
-        data = {
-            "token" : ctx["redcapApplicationToken"],
-            "content" : "metadata",
-            "format" : "json",
-            "returnFormat" : "json"
-        }
-        headers = {
-            "Content-Type" : "application/x-www-form-urlencoded",
-            "Accept" : "application/json"
-        }
-        download(headers, data, ctx["dataDictionaryInputFilePath"])
-
+        downloadData(ctx)
+        downloadDataDictionary(ctx)
     if not backUpDataDictionray(ctx):
         return False
 
@@ -133,24 +159,9 @@ def runPipeline(ctx):
         
     return syncDatabase(ctx)
 
+
 if __name__ == "__main__":
-    ctx = {
-        "home": str(Path.home()),
-        "redcapApplicationToken": os.environ["REDCAP_APPLICATION_TOKEN"],
-        "dbuser": os.environ["POSTGRES_USER"],
-        "dbpass": os.environ["POSTGRES_PASSWORD"],
-        "dbhost": os.environ["POSTGRES_HOST"],
-        "dbport": os.environ["POSTGRES_PORT"],
-        "dbname": os.environ["POSTGRES_DATABASE_NAME"],
-        "reloaddb": os.environ["RELOAD_DATABASE"] == "1",
-        "backupDir": os.environ["POSTGRES_DUMP_PATH"],
-        "redcapUrlBase": os.environ["REDCAP_URL_BASE"],
-        "assemblyPath": "TIC preprocessing-assembly.jar",
-        "mappingInputFilePath": "HEAL data mapping.csv",
-        "dataInputFilePath": "redcap_export.json",
-        "dataDictionaryInputFilePath": "redcap_data_dictionary_export.json",
-        "outputDirPath": "data"
-    }
+    ctx = context()
     s = os.environ["RELOAD_SCHEDULE"] == "1"
     scheduleRunTime = os.environ["SCHEDULE_RUN_TIME"]
 
