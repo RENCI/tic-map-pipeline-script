@@ -63,10 +63,13 @@ def syncDatabase(ctx):
     cursor = conn.cursor()
     tables = list(filter(lambda x : not x.startswith("."), os.listdir("data/tables")))
     for f in tables:
+        print("deleting from table", f)
         cursor.execute("DELETE FROM \"" + f + "\"")
-        cursor.close()
-        conn.commit()
-        conn.close()
+    cursor.close()
+    conn.commit()
+    conn.close()
+    for f in tables:
+        print("inserting into table", f)
         cp = subprocess.run(["csvsql", "--db", "postgres://"+ctx["dbuser"]+":" + ctx["dbpass"] + "@" + ctx["dbhost"] +"/" + ctx["dbname"], "--insert", "--no-create", "-d", ",", "-e", "utf8"] + ["data/tables/" + x for x in tables])
         if cp.returncode != 0:
             print("error syncing database", cp.returncode)

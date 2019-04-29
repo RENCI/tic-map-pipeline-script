@@ -6,6 +6,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+#    command: ["-s", "-k", "test_etl"]
     image: pmd-pipeline-reload-test:0.2.0
     environment:
       POSTGRES_DATABASE_NAME: $POSTGRES_DB
@@ -24,10 +25,14 @@ services:
     depends_on:
       - db
       - redcap
+    
       
   db:
     container_name: pmd-pipeline-reload-test-db-mock
-    image: postgres:11.2
+    build:
+      context: ./db/
+      dockerfile: Dockerfile
+    image: pmd-pipeline-reload-test-db-mock:0.2.0
     environment:
       POSTGRES_DB: $POSTGRES_DB
       POSTGRES_USER: $POSTGRES_USER

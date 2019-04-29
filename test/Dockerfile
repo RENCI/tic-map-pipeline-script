@@ -5,8 +5,8 @@ RUN mkdir test
 RUN mv reload.py test
 
 COPY test_reload.py test/test_reload.py
-COPY redcap/record.json test/redcap/record.json
-COPY redcap/metadata.json test/redcap/metadata.json
+COPY redcap/record.json redcap/record.json
+COPY redcap/metadata.json redcap/metadata.json
 
 WORKDIR test
 
