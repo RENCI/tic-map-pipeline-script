@@ -6,7 +6,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-#    command: ["-s", "-k", "test_etl"]
+#    command: ["-s", "-k", "test_sync"]
     image: pmd-pipeline-reload-test:0.2.0
     environment:
       POSTGRES_DATABASE_NAME: $POSTGRES_DB

@@ -70,7 +70,7 @@ def syncDatabase(ctx):
     conn.close()
     for f in tables:
         print("inserting into table", f)
-        cp = subprocess.run(["csvsql", "--db", "postgres://"+ctx["dbuser"]+":" + ctx["dbpass"] + "@" + ctx["dbhost"] +"/" + ctx["dbname"], "--insert", "--no-create", "-d", ",", "-e", "utf8"] + ["data/tables/" + x for x in tables])
+        cp = subprocess.run(["csvsql", "--db", "postgres://"+ctx["dbuser"]+":" + ctx["dbpass"] + "@" + ctx["dbhost"] +"/" + ctx["dbname"], "--insert", "--no-create", "-d", ",", "-e", "utf8", "--no-inference", "data/tables/" + f])
         if cp.returncode != 0:
             print("error syncing database", cp.returncode)
             return False
