@@ -31,8 +31,13 @@ def backUpDatabase(ctx):
         else:
             return True
 
+
+def dataDictionaryBackUpDirectory(ctx):
+    return ctx["backupDir"] + "/redcap_data_dictionary"
+
+
 def backUpDataDictionray(ctx):
-    data_dictionary_backup_dir = ctx["backupDir"] + "/redcap_data_dictionary"
+    data_dictionary_backup_dir = dataDictionaryBackUpDirectory(ctx)
     data_dictionary_backup_path = data_dictionary_backup_dir + "/redcap_data_dictionary_export.json"
     do_backup = False
     if not os.path.isfile(data_dictionary_backup_path):
@@ -46,6 +51,7 @@ def backUpDataDictionray(ctx):
         if not os.path.exists(data_dictionary_backup_dir):
             os.makedirs(data_dictionary_backup_dir)
         shutil.copy(ctx["dataDictionaryInputFilePath"], data_dictionary_backup_path)
+    return True
 
 
 def download(ctx, headers, data, output):

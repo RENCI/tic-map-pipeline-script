@@ -47,4 +47,20 @@ def test_sync():
     assert len(rs) == 1
     for row in rs:
         assert row[0] == 1
-    
+
+
+def test_back_data_dictionary():
+    os.chdir("/")
+    ctx = reload.context()
+    reload.downloadDataDictionary(ctx)
+    assert reload.backupDataDictionary(ctx)
+
+
+def test_back_data_dictionary_makedirs_exists():
+    os.chdir("/")
+    ctx = reload.context()
+    directory = reload.dataDictionrayBackUpDirectory(ctx)
+    os.makedirs(directory)
+    reload.downloadDataDictionary(ctx)
+    assert reload.backupDataDictionary(ctx)
+
