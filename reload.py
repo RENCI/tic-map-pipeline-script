@@ -99,7 +99,8 @@ def runPipeline():
             shutil.copy(data_dictionary_backup_path, data_dictionary_backup_path+str(mtime))
             do_backup = True
         if do_backup:
-            os.makedirs(data_dictionary_backup_dir)
+            if not os.path.exists(data_dictionary_backup_dir):
+                os.makedirs(data_dictionary_backup_dir)
             shutil.copy(dataDictionaryInputFilePath, data_dictionary_backup_path)
 
         if os.path.isdir("data/tables"):
