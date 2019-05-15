@@ -53,7 +53,7 @@ def test_back_data_dictionary():
     os.chdir("/")
     ctx = reload.context()
     reload.downloadDataDictionary(ctx)
-    assert reload.backupDataDictionary(ctx)
+    assert reload.backUpDataDictionary(ctx)
 
 
 def test_back_data_dictionary_makedirs_exists():
@@ -62,5 +62,5 @@ def test_back_data_dictionary_makedirs_exists():
     directory = reload.dataDictionrayBackUpDirectory(ctx)
     os.makedirs(directory)
     reload.downloadDataDictionary(ctx)
-    assert reload.backupDataDictionary(ctx)
+    assert reload.backUpDataDictionary(ctx)
 

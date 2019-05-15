@@ -236,12 +236,12 @@ if __name__ == "__main__":
         @app.route("/backup")
         def backup():
             ctx = context()
-            backUpDatabase(ctx)
+            backUpDatabase(ctx, lock)
     
         @app.route("/sync")
         def sync():
             ctx = context()
-            entrypoint(ctx, one_off=True)
+            entrypoint(ctx, lock, one_off=True)
             
         app.run(host="0.0.0.0")
     p.join()
