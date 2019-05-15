@@ -51,7 +51,9 @@ RUN tar zxvf spark-2.4.3-bin-hadoop2.7.tgz
 ENV PATH="/spark-2.4.3-bin-hadoop2.7/bin:${PATH}"
 # set to 1 to reload data from redcap database
 ENV RELOAD_DATABASE=1
-# set to 1 to schedule periodic or set to 0 for one off reload
+# set to 1 for one off reload
+ENV RELOAD_ONE_OFF=0
+# set to 1 to schedule periodic reload
 ENV RELOAD_SCHEDULE=1
 # set to 1 to create tables
 ENV CREATE_TABLES=0

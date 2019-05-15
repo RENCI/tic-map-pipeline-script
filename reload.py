@@ -236,8 +236,7 @@ if __name__ == "__main__":
     scheduleRunTime = os.environ["SCHEDULE_RUN_TIME"]
     runServer = os.environ["SERVER"] == "1"
     lock = RLock()
-    ctx["lock"] = lock
-    p = Process(target = entrypoint, args=[ctx], kwargs={
+    p = Process(target = entrypoint, args=[ctx, lock], kwargs={
         "create_tables": cdb,
         "insert_data": idb,
         "schedule": s,
