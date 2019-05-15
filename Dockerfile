@@ -12,6 +12,29 @@
 # build TIC preprocessing-assembly-0.1.0.jar from https://github.com/RENCI/map-pipeline/tree/0.1.0 rename it to TIC preprocessing-assembly.jar
 # download "HEAL data mapping_finalv5.csv" from https://github.com/RENCI/HEAL-data-mapping/blob/0.1.0/HEAL%20data%20mapping_finalv5.csv rename it to HEAL data mapping.csv
 # need to mount backup dir to POSTGRES_DUMP_PATH
+FROM ubuntu:18.04 AS schema
+
+RUN apt-get update && apt-get install -y wget openjdk-11-jdk curl
+
+COPY ["HEAL-data-mapping/HEAL data mapping_finalv6.csv", "HEAL data mapping.csv"]
+
+RUN curl -sSL https://get.haskellstack.org/ | sh
+COPY ["map-pipeline-schema", "map-pipeline-schema"]
+WORKDIR map-pipeline-schema
+RUN stack build
+RUN ["stack", "exec", "map-pipeline-schema-exe", "/HEAL data mapping.csv", "/tables.sql"]
+
+FROM ubuntu:18.04 AS transform
+
+RUN apt-get update && apt-get install -y wget openjdk-11-jdk gnupg
+
+RUN echo "deb https://dl.bintray.com/sbt/debian /" | tee -a /etc/apt/sources.list.d/sbt.list
+RUN apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2EE0EA64E40A89B84B2DF73499E82A75642AC823
+RUN apt-get update && apt-get install -y sbt
+COPY ["tic-map-pipeline", "tic-map-pipeline"]
+WORKDIR tic-map-pipeline
+RUN sbt assembly
+
 FROM ubuntu:18.04
 
 RUN mkdir data
@@ -25,14 +48,17 @@ RUN wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-k
 RUN apt-get update && apt-get install -y python3-pip wget openjdk-11-jdk postgresql-client-11
 RUN pip3 install schedule pandas psycopg2-binary csvkit requests
 
-RUN wget http://apache.spinellicreations.com/spark/spark-2.4.1/spark-2.4.1-bin-hadoop2.7.tgz
-RUN tar zxvf spark-2.4.1-bin-hadoop2.7.tgz
-ENV PATH="/spark-2.4.1-bin-hadoop2.7/bin:${PATH}"
+RUN wget http://apache.spinellicreations.com/spark/spark-2.4.3/spark-2.4.3-bin-hadoop2.7.tgz
+RUN tar zxvf spark-2.4.3-bin-hadoop2.7.tgz
+ENV PATH="/spark-2.4.3-bin-hadoop2.7/bin:${PATH}"
 ENV RELOAD_DATABASE=1
 ENV RELOAD_SCHEDULE=1
+ENV CREATE_TABLES=0
 
-COPY ["TIC preprocessing-assembly.jar", "TIC preprocessing-assembly.jar"]
-COPY ["HEAL data mapping.csv", "HEAL data mapping.csv"]
+COPY ["HEAL-data-mapping/HEAL data mapping_finalv6.csv", "HEAL data mapping.csv"]
+COPY --from=schema ["/tables.sql", "data/tables.sql"] 
+COPY --from=transform ["tic-map-pipeline/target/scala-2.11/TIC preprocessing-assembly-0.2.0.jar", "TIC preprocessing-assembly.jar"]
+
 COPY ["reload.py", "reload.py"]
 
 ENTRYPOINT ["python3", "reload.py"]

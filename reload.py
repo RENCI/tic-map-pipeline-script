@@ -65,7 +65,20 @@ def download(ctx, headers, data, output):
                 f.write(chunk)
 
                 
-def syncDatabase(ctx):
+def createTables(ctx):
+    conn = connect(user=ctx["dbuser"], password=ctx["dbpass"], host=ctx["dbhost"], dbname=ctx["dbname"])
+    cursor = conn.cursor()
+    with open("data/tables.sql") as f:
+        for line in f:
+            print("executing", line)
+            cursor.execute(line)
+    cursor.close()
+    conn.commit()
+    conn.close()
+    return True
+    
+    
+def deleteTables(ctx):
     conn = connect(user=ctx["dbuser"], password=ctx["dbpass"], host=ctx["dbhost"], dbname=ctx["dbname"])
     cursor = conn.cursor()
     tables = list(filter(lambda x : not x.startswith("."), os.listdir("data/tables")))
@@ -75,12 +88,24 @@ def syncDatabase(ctx):
     cursor.close()
     conn.commit()
     conn.close()
+    return True
+
+
+def insertData(ctx):
     for f in tables:
         print("inserting into table", f)
         cp = subprocess.run(["csvsql", "--db", "postgres://"+ctx["dbuser"]+":" + ctx["dbpass"] + "@" + ctx["dbhost"] +"/" + ctx["dbname"], "--insert", "--no-create", "-d", ",", "-e", "utf8", "--no-inference", "data/tables/" + f])
         if cp.returncode != 0:
             print("error syncing database", cp.returncode)
             return False
+    return True
+
+
+def syncDatabase(ctx):
+    if not deleteTables(ctx):
+        return False
+    if not insertData(ctx):
+        return False
     return True
 
 
@@ -173,7 +198,11 @@ def runPipeline(ctx):
 if __name__ == "__main__":
     ctx = context()
     s = os.environ["RELOAD_SCHEDULE"] == "1"
+    cdb = os.environ["CREATE_TABLES"] == "1"
     scheduleRunTime = os.environ["SCHEDULE_RUN_TIME"]
+
+    if cdb:
+        createTables(ctx)
 
     if s:
         schedule.every().day.at(scheduleRunTime).do(lambda: runPipeline(ctx))
