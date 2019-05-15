@@ -31,8 +31,8 @@ RUN apt-get update && apt-get install -y wget openjdk-11-jdk gnupg
 RUN echo "deb https://dl.bintray.com/sbt/debian /" | tee -a /etc/apt/sources.list.d/sbt.list
 RUN apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2EE0EA64E40A89B84B2DF73499E82A75642AC823
 RUN apt-get update && apt-get install -y sbt
-COPY ["tic-map-pipeline", "tic-map-pipeline"]
-WORKDIR tic-map-pipeline
+COPY ["map-pipeline", "map-pipeline"]
+WORKDIR map-pipeline
 RUN sbt assembly
 
 FROM ubuntu:18.04
@@ -57,7 +57,7 @@ ENV CREATE_TABLES=0
 
 COPY ["HEAL-data-mapping/HEAL data mapping_finalv6.csv", "HEAL data mapping.csv"]
 COPY --from=schema ["/tables.sql", "data/tables.sql"] 
-COPY --from=transform ["tic-map-pipeline/target/scala-2.11/TIC preprocessing-assembly-0.2.0.jar", "TIC preprocessing-assembly.jar"]
+COPY --from=transform ["map-pipeline/target/scala-2.11/TIC preprocessing-assembly-0.2.0.jar", "TIC preprocessing-assembly.jar"]
 
 COPY ["reload.py", "reload.py"]
 

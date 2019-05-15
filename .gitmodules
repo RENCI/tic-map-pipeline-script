@@ -5,5 +5,5 @@
 	path = map-pipeline-schema
 	url = https://github.com/RENCI/map-pipeline-schema
 [submodule "tic-map-pipeline"]
-	path = tic-map-pipeline
-	url = https://github.com/RENCI/tic-map-pipeline
+	path = map-pipeline
+	url = https://github.com/RENCI/map-pipeline
