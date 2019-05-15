@@ -212,20 +212,6 @@ def entrypoint(ctx, lock, create_tables=None, insert_data=None, schedule=None, o
 
 
 from flask import Flask
-app = Flask(__name__)
-
-
-@app.route("/backup")
-def backup():
-    ctx = context()
-    backUpDatabase(ctx)
-    
-
-@app.route("/sync")
-def sync():
-    ctx = context()
-    entrypoint(ctx, one_off=True)
-
 
 if __name__ == "__main__":
     ctx = context()
@@ -245,6 +231,20 @@ if __name__ == "__main__":
     })
     p.start()
     if runServer:
+        app = Flask(__name__)
+
+        
+        @app.route("/backup")
+        def backup():
+            ctx = context()
+            backUpDatabase(ctx)
+    
+
+        @app.route("/sync")
+        def sync():
+            ctx = context()
+            entrypoint(ctx, one_off=True)
+            
         app.run(host="0.0.0.0")
     p.join()
         
