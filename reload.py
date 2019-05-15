@@ -10,21 +10,23 @@ import datetime
 from pathlib import Path
 import filecmp
 import shutil
+from multiprocessing import Process, RLock
 import logging
 
 logging.basicConfig(level=logging.DEBUG)
 
-def backUpDatabase(ctx):
-    with open(home + "/.pgpass", "w+") as f:
-        f.write(ctx["dbhost"] + ":" + ctx["dbport"] + ":" + ctx["dbname"] + ":" + ctx["dbuser"] + ":" + ctx["dbpass"])
-        os.chmod(home + "/.pgpass", stat.S_IREAD | stat.S_IWRITE)
-        pgdumpfile = ctx["backupDir"] + "/" + str(datetime.datetime.now())
-        cp = subprocess.run(["pg_dump", "-O", "-d", ctx["dbname"], "-U", ctx["dbuser"], "-h", ctx["dbhost"], "-p", ctx["dbport"], "-f", pgdumpfile])
-        if cp.returncode != 0:
-            sys.stderr.write("backup encountered an error: " + str(cp.returncode))
-            return False
-        else:
-            return True
+def backUpDatabase(ctx, lock):
+    with lock:
+        with open(home + "/.pgpass", "w+") as f:
+            f.write(ctx["dbhost"] + ":" + ctx["dbport"] + ":" + ctx["dbname"] + ":" + ctx["dbuser"] + ":" + ctx["dbpass"])
+            os.chmod(home + "/.pgpass", stat.S_IREAD | stat.S_IWRITE)
+            pgdumpfile = ctx["backupDir"] + "/" + str(datetime.datetime.now())
+            cp = subprocess.run(["pg_dump", "-O", "-d", ctx["dbname"], "-U", ctx["dbuser"], "-h", ctx["dbhost"], "-p", ctx["dbport"], "-f", pgdumpfile])
+            if cp.returncode != 0:
+                sys.stderr.write("backup encountered an error: " + str(cp.returncode))
+                return False
+            else:
+                return True
 
 
 def dataDictionaryBackUpDirectory(ctx):
@@ -174,37 +176,39 @@ def context():
     }
 
 
-def runPipeline(ctx):
-    if ctx["reloaddb"]:
-        downloadData(ctx)
-        downloadDataDictionary(ctx)
-    if not backUpDataDictionray(ctx):
-        return False
+def runPipeline(ctx, lock):
+    with lock:
+        if ctx["reloaddb"]:
+            downloadData(ctx)
+            downloadDataDictionary(ctx)
+        if not backUpDataDictionray(ctx):
+            return False
 
-    if not etl(ctx):
-        return False
+        if not etl(ctx):
+            return False
 
-    if not backUpDatabase(ctx):
-        return False
+        if not backUpDatabase(ctx):
+            return False
         
-    return syncDatabase(ctx)
+        return syncDatabase(ctx)
 
 
-def entrypoint(ctx, create_tables=None, insert_data=None, schedule=None, one_off=None, schedule_run_time=None):
-    if create_tables:
-        createTables(ctx)
+def entrypoint(ctx, lock, create_tables=None, insert_data=None, schedule=None, one_off=None, schedule_run_time=None):
+    with lock:
+        if create_tables:
+            createTables(ctx)
 
-    if insert_data:
-        insertData(ctx)
+        if insert_data:
+            insertData(ctx)
 
+        if one_off:
+            runPipeline(ctx, lock)
+            
     if schedule:
-        schedule.every().day.at(schedule_run_time).do(lambda: runPipeline(ctx))
+        schedule.every().day.at(schedule_run_time).do(lambda: runPipeline(ctx, lock))
         while True:
             schedule.run_pending()
             time.sleep(1000)
-
-    if one_off:
-        runPipeline(ctx)
 
 
 from flask import Flask
@@ -226,12 +230,25 @@ def sync():
 if __name__ == "__main__":
     ctx = context()
     s = os.environ["RELOAD_SCHEDULE"] == "1"
+    o = os.environ["RELOAD_ONE_OFF"] == "0"
     cdb = os.environ["CREATE_TABLES"] == "1"
     idb = os.environ["INSERT_DATA"] == "1"
     scheduleRunTime = os.environ["SCHEDULE_RUN_TIME"]
     runServer = os.environ["SERVER"] == "1"
+    lock = RLock()
+    ctx["lock"] = lock
+    p = Process(target = entrypoint, args=[ctx], kwargs={
+        "create_tables": cdb,
+        "insert_data": idb,
+        "schedule": s,
+        "one_off": o,
+        "schedule_run_time": scheduleRunTime
+    })
+    p.start()
     if runServer:
         app.run(host="0.0.0.0")
-    else:
-        entrypoint(ctx, create_tables=cdb, insert_data=idb, schedule=s, one_off=not s, schedule_run_time=scheduleRunTime)
+    p.join()
+        
+    
+       
 
