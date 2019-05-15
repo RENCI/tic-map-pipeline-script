@@ -57,6 +57,7 @@ ENV RELOAD_SCHEDULE=1
 ENV CREATE_TABLES=0
 # set to 1 to insert data
 ENV INSERT_DATA=0
+ENV SERVER=0
 
 COPY ["HEAL-data-mapping/HEAL data mapping_finalv6.csv", "HEAL data mapping.csv"]
 COPY --from=schema ["/tables.sql", "data/tables.sql"] 

@@ -10,11 +10,6 @@ import datetime
 from pathlib import Path
 import filecmp
 import shutil
-
-
-
-
-
 import logging
 
 logging.basicConfig(level=logging.DEBUG)
@@ -195,7 +190,7 @@ def runPipeline(ctx):
     return syncDatabase(ctx)
 
 
-def entrypoint(ctx, create_tables=True, insert_data=True, schedule=True, schedule_run_time="00:00"):
+def entrypoint(ctx, create_tables=None, insert_data=None, schedule=None, one_off=None, schedule_run_time=None):
     if create_tables:
         createTables(ctx)
 
@@ -207,8 +202,25 @@ def entrypoint(ctx, create_tables=True, insert_data=True, schedule=True, schedul
         while True:
             schedule.run_pending()
             time.sleep(1000)
-    else:
+
+    if one_off:
         runPipeline(ctx)
+
+
+from flask import Flask
+app = Flask(__name__)
+
+
+@app.route("/backup")
+def backup():
+    ctx = context()
+    backUpDatabase(ctx)
+    
+
+@app.route("/sync")
+def sync():
+    ctx = context()
+    entrypoint(ctx, one_off=True)
 
 
 if __name__ == "__main__":
@@ -217,5 +229,9 @@ if __name__ == "__main__":
     cdb = os.environ["CREATE_TABLES"] == "1"
     idb = os.environ["INSERT_DATA"] == "1"
     scheduleRunTime = os.environ["SCHEDULE_RUN_TIME"]
-    entrypoint(ctx, create_tables=cdb, insert_data=idb, schedule=s, schedule_run_time=scheduleRunTime)
+    runServer = os.environ["SERVER"] == "1"
+    if runServer:
+        app.run(host="0.0.0.0")
+    else:
+        entrypoint(ctx, create_tables=cdb, insert_data=idb, schedule=s, one_off=not s, schedule_run_time=scheduleRunTime)
 
