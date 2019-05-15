@@ -9,8 +9,6 @@
 # POSTGRES_DUMP_PATH
 # REDCAP_URL_BASE default should be set to https://redcap.vanderbilt.edu/api/
 # SCHEDULE_RUN_TIME default should be set to 00:00
-# build TIC preprocessing-assembly-0.1.0.jar from https://github.com/RENCI/map-pipeline/tree/0.1.0 rename it to TIC preprocessing-assembly.jar
-# download "HEAL data mapping_finalv5.csv" from https://github.com/RENCI/HEAL-data-mapping/blob/0.1.0/HEAL%20data%20mapping_finalv5.csv rename it to HEAL data mapping.csv
 # need to mount backup dir to POSTGRES_DUMP_PATH
 FROM ubuntu:18.04 AS schema
 
@@ -51,8 +49,11 @@ RUN pip3 install schedule pandas psycopg2-binary csvkit requests
 RUN wget http://apache.spinellicreations.com/spark/spark-2.4.3/spark-2.4.3-bin-hadoop2.7.tgz
 RUN tar zxvf spark-2.4.3-bin-hadoop2.7.tgz
 ENV PATH="/spark-2.4.3-bin-hadoop2.7/bin:${PATH}"
+# set to 1 to reload data from redcap database
 ENV RELOAD_DATABASE=1
+# set to 1 to schedule periodic or set to 0 for one off reload
 ENV RELOAD_SCHEDULE=1
+# set to 1 to create tables
 ENV CREATE_TABLES=0
 
 COPY ["HEAL-data-mapping/HEAL data mapping_finalv6.csv", "HEAL data mapping.csv"]
