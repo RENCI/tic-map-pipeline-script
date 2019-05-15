@@ -233,13 +233,11 @@ if __name__ == "__main__":
     if runServer:
         app = Flask(__name__)
 
-        
         @app.route("/backup")
         def backup():
             ctx = context()
             backUpDatabase(ctx)
     
-
         @app.route("/sync")
         def sync():
             ctx = context()
