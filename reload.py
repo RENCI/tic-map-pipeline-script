@@ -180,7 +180,7 @@ def context():
 
 
 def runPipeline(ctx):
-    if reloaddb:
+    if ctx["reloaddb"]:
         downloadData(ctx)
         downloadDataDictionary(ctx)
     if not backUpDataDictionray(ctx):
@@ -195,20 +195,27 @@ def runPipeline(ctx):
     return syncDatabase(ctx)
 
 
-if __name__ == "__main__":
-    ctx = context()
-    s = os.environ["RELOAD_SCHEDULE"] == "1"
-    cdb = os.environ["CREATE_TABLES"] == "1"
-    scheduleRunTime = os.environ["SCHEDULE_RUN_TIME"]
-
-    if cdb:
+def entrypoint(ctx, create_tables=True, insert_data=True, schedule=True, schedule_run_time="00:00"):
+    if create_tables:
         createTables(ctx)
 
-    if s:
-        schedule.every().day.at(scheduleRunTime).do(lambda: runPipeline(ctx))
+    if insert_data:
+        insertData(ctx)
+
+    if schedule:
+        schedule.every().day.at(schedule_run_time).do(lambda: runPipeline(ctx))
         while True:
             schedule.run_pending()
             time.sleep(1000)
     else:
         runPipeline(ctx)
+
+
+if __name__ == "__main__":
+    ctx = context()
+    s = os.environ["RELOAD_SCHEDULE"] == "1"
+    cdb = os.environ["CREATE_TABLES"] == "1"
+    idb = os.environ["INSERT_DATA"] == "1"
+    scheduleRunTime = os.environ["SCHEDULE_RUN_TIME"]
+    entrypoint(ctx, create_tables=cdb, insert_data=idb, schedule=s, schedule_run_time=scheduleRunTime)
 
