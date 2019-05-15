@@ -2,11 +2,13 @@
 
 ### How to build ###
 
-build `TIC preprocessing-assembly-0.2.0.jar` from https://github.com/RENCI/map-pipeline rename it to `TIC preprocessing-assembly.jar`
+```
+git submodule init --update
+```
 
-download `HEAL data mapping_finalv6.csv` from https://github.com/RENCI/HEAL-data-mapping rename it to `HEAL data mapping.csv`
-
-```docker build```
+```
+docker build
+```
 
 ### How to run test ###
 
@@ -15,5 +17,5 @@ create a one record data in json format and store it under `test/redcap`
 
 ```
 cd test
-docker-compose up --build
+docker-compose up --build -V
 ```
