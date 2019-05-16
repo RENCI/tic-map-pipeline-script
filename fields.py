@@ -42,7 +42,6 @@ with open(data) as f:
             if k in ["redcap_repeat_instrument", "redcap_repeat_instance"]:
                 row[k] = ""
             else:
-
                 tyr = match(k, fields)
                 if tyr is not None:
                     ty, r = tyr
