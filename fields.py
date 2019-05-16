@@ -40,7 +40,7 @@ with open(data) as f:
             if k in ["redcap_repeat_instrument", "redcap_repeat_instance"]:
                 row[k] = ""
             elif k.startswith("reviewer_name_"):
-                row[k] = "reviewer " + k
+                row[k] = "Alice Bob"
             else:
                 tyr = match(k, fields)
                 if tyr is not None:
