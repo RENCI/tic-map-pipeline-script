@@ -57,9 +57,15 @@ with open(data) as f:
                         elif r == "phonenumber":
                             row[k] = "111-222-3334"
                         elif r == "index":
-                            row[k] = "0"
+                            row[k] = "1"
+                        elif r == "firstname":
+                            row[k] = "Alice"
+                        elif r == "lastname":
+                            row[k] = "Bob"
                         else:
                             row[k] = "ipsum lorem"
+#            if k in row:
+#                row[k] = v
         rows.append(row)
 
 with open(data2, "w") as f:
