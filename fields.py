@@ -39,6 +39,8 @@ with open(data) as f:
         for k, v in record.items():
             if k in ["redcap_repeat_instrument", "redcap_repeat_instance"]:
                 row[k] = ""
+            elif k.startswith("reviewer_name_"):
+                row[k] = "reviewer " + k
             else:
                 tyr = match(k, fields)
                 if tyr is not None:
