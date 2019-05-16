@@ -44,7 +44,7 @@ RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ bionic-pgdg main" | tee -
 RUN wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
 
 RUN apt-get update && apt-get install -y python3-pip wget openjdk-11-jdk postgresql-client-11
-RUN pip3 install schedule pandas psycopg2-binary csvkit requests
+RUN pip3 install schedule pandas psycopg2-binary csvkit requests flask
 
 RUN wget http://apache.spinellicreations.com/spark/spark-2.4.3/spark-2.4.3-bin-hadoop2.7.tgz
 RUN tar zxvf spark-2.4.3-bin-hadoop2.7.tgz

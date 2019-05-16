@@ -25,6 +25,7 @@ with open(mapping) as f:
             
         fields |= set(fields2)
         
+fields |= set([("redcap_repeat_instrument", "text", ""),("redcap_repeat_instance", "text", "")])
 print(fields)
 
 def match(k, fields):
@@ -55,6 +56,8 @@ with open(data) as f:
                         row[k] = "111-222-3334"
                     elif r == "index":
                         row[k] = "0"
+                    elif r == "empty":
+                        row[k] = ""
                     else:
                         row[k] = "ipsum lorem"
         rows.append(row)

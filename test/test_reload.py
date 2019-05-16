@@ -3,6 +3,7 @@ import filecmp
 from sqlalchemy import create_engine
 import os
 import os.path
+import shutil
 
 
 def test_downloadData():
@@ -54,6 +55,8 @@ def test_back_data_dictionary():
     ctx = reload.context()
     reload.downloadDataDictionary(ctx)
     assert reload.backUpDataDictionary(ctx)
+    directory = reload.dataDictionaryBackUpDirectory(ctx)
+    shutil.rmtree(directory)
 
 
 def test_back_data_dictionary_makedirs_exists():
@@ -63,4 +66,5 @@ def test_back_data_dictionary_makedirs_exists():
     os.makedirs(directory)
     reload.downloadDataDictionary(ctx)
     assert reload.backUpDataDictionary(ctx)
+    shutil.rmtree(directory)
 
