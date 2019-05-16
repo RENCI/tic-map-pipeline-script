@@ -25,7 +25,6 @@ with open(mapping) as f:
             
         fields |= set(fields2)
         
-fields |= set([("redcap_repeat_instrument", "text", "empty"),("redcap_repeat_instance", "text", "empty")])
 print(fields)
 
 def match(k, fields):
@@ -40,26 +39,28 @@ with open(data) as f:
     for record in jsondata:
         row = {}
         for k, v in record.items():
-            tyr = match(k, fields)
-            if tyr is not None:
-                ty, r = tyr
-                if ty == "date":
-                    row[k] = "2001-01-01"
-                elif ty == "int":
-                    row[k] = "0"
-                elif ty == "boolean":
-                    row[k] = "0"
-                else:
-                    if r == "email":
-                        row[k] = "user@email.edu"
-                    elif r == "phonenumber":
-                        row[k] = "111-222-3334"
-                    elif r == "index":
+            if k in ["redcap_repeat_instrument", "redcap_repeat_instance"]:
+                row[k] = ""
+            else:
+
+                tyr = match(k, fields)
+                if tyr is not None:
+                    ty, r = tyr
+                    if ty == "date":
+                        row[k] = "2001-01-01"
+                    elif ty == "int":
                         row[k] = "0"
-                    elif r == "empty":
-                        row[k] = ""
+                    elif ty == "boolean":
+                        row[k] = "0"
                     else:
-                        row[k] = "ipsum lorem"
+                        if r == "email":
+                            row[k] = "user@email.edu"
+                        elif r == "phonenumber":
+                            row[k] = "111-222-3334"
+                        elif r == "index":
+                            row[k] = "0"
+                        else:
+                            row[k] = "ipsum lorem"
         rows.append(row)
 
 print(rows)
