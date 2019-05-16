@@ -74,11 +74,14 @@ def createTables(ctx):
     conn.close()
     return True
     
-    
+
+def getTables(ctx):
+    return list(filter(lambda x : not x.startswith("."), os.listdir("data/tables")))
+
 def deleteTables(ctx):
     conn = connect(user=ctx["dbuser"], password=ctx["dbpass"], host=ctx["dbhost"], dbname=ctx["dbname"])
     cursor = conn.cursor()
-    tables = list(filter(lambda x : not x.startswith("."), os.listdir("data/tables")))
+    tables = getTables(ctx)
     for f in tables:
         print("deleting from table", f)
         cursor.execute("DELETE FROM \"" + f + "\"")
@@ -89,6 +92,7 @@ def deleteTables(ctx):
 
 
 def insertData(ctx):
+    tables = getTables(ctx)
     for f in tables:
         print("inserting into table", f)
         cp = subprocess.run(["csvsql", "--db", "postgres://"+ctx["dbuser"]+":" + ctx["dbpass"] + "@" + ctx["dbhost"] +"/" + ctx["dbname"], "--insert", "--no-create", "-d", ",", "-e", "utf8", "--no-inference", "data/tables/" + f])
