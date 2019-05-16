@@ -33,7 +33,7 @@ def dataDictionaryBackUpDirectory(ctx):
     return ctx["backupDir"] + "/redcap_data_dictionary"
 
 
-def backUpDataDictionray(ctx):
+def backUpDataDictionary(ctx):
     data_dictionary_backup_dir = dataDictionaryBackUpDirectory(ctx)
     data_dictionary_backup_path = data_dictionary_backup_dir + "/redcap_data_dictionary_export.json"
     do_backup = False
@@ -181,7 +181,7 @@ def runPipeline(ctx, lock):
         if ctx["reloaddb"]:
             downloadData(ctx)
             downloadDataDictionary(ctx)
-        if not backUpDataDictionray(ctx):
+        if not backUpDataDictionary(ctx):
             return False
 
         if not etl(ctx):
