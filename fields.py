@@ -25,7 +25,7 @@ with open(mapping) as f:
             
         fields |= set(fields2)
         
-fields |= set([("redcap_repeat_instrument", "text", ""),("redcap_repeat_instance", "text", "")])
+fields |= set([("redcap_repeat_instrument", "text", "empty"),("redcap_repeat_instance", "text", "empty")])
 print(fields)
 
 def match(k, fields):
