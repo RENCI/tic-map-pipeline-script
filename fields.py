@@ -64,8 +64,6 @@ with open(data) as f:
                             row[k] = "Bob"
                         else:
                             row[k] = "ipsum lorem"
-#            if k in row:
-#                row[k] = v
         rows.append(row)
 
 with open(data2, "w") as f:
