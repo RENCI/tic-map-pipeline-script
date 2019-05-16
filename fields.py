@@ -25,8 +25,6 @@ with open(mapping) as f:
             
         fields |= set(fields2)
         
-print(fields)
-
 def match(k, fields):
     for f, ty, r in fields:
         if f == k or (f.startswith(k) and f[len(k):].startswith("___")):
@@ -61,8 +59,6 @@ with open(data) as f:
                         else:
                             row[k] = "ipsum lorem"
         rows.append(row)
-
-print(rows)
 
 with open(data2, "w") as f:
     json.dump(rows, f, indent=4)
