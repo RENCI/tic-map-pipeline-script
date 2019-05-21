@@ -220,7 +220,7 @@ from flask import Flask
 if __name__ == "__main__":
     ctx = context()
     s = os.environ["RELOAD_SCHEDULE"] == "1"
-    o = os.environ["RELOAD_ONE_OFF"] == "0"
+    o = os.environ["RELOAD_ONE_OFF"] == "1"
     cdb = os.environ["CREATE_TABLES"] == "1"
     idb = os.environ["INSERT_DATA"] == "1"
     scheduleRunTime = os.environ["SCHEDULE_RUN_TIME"]
