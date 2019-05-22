@@ -197,7 +197,7 @@ def runPipeline(ctx, lock):
         return syncDatabase(ctx)
 
 
-def entrypoint(ctx, lock, create_tables=None, insert_data=None, schedule=None, one_off=None, schedule_run_time=None):
+def entrypoint(ctx, lock, create_tables=None, insert_data=None, reload=None, one_off=None, schedule_run_time=None):
     with lock:
         if create_tables:
             createTables(ctx)
@@ -208,7 +208,7 @@ def entrypoint(ctx, lock, create_tables=None, insert_data=None, schedule=None, o
         if one_off:
             runPipeline(ctx, lock)
             
-    if schedule:
+    if reload:
         schedule.every().day.at(schedule_run_time).do(lambda: runPipeline(ctx, lock))
         while True:
             schedule.run_pending()
