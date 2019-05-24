@@ -39,11 +39,11 @@ def clearDatabase(ctx):
         rows = cursor.fetchall()
         for row in rows:
             print ("dropping table: ", row[1])
-            cursor.execute("drop table " + row[1] + " cascade") 
+            cursor.execute("drop table \"" + row[1] + "\" cascade") 
         cursor.close()
         conn.close()
-        return true
-    except e:
+        return True
+    except Exception as e:
         sys.stderr.write("clear database encountered an error: " + str(e))
         return False
         
