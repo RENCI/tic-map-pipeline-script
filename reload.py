@@ -29,26 +29,33 @@ def backUpDatabase(ctx, lock):
             else:
                 return True
 
+            
+def clearDatabase(ctx):
+    conn = connect(user=ctx["dbuser"], password=ctx["dbpass"], host=ctx["dbhost"], dbname=ctx["dbname"])
+    cursor = conn.cursor()
+            
+    try:
+        cursor.execute("SELECT table_schema,table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_schema,table_name")
+        rows = cursor.fetchall()
+        for row in rows:
+            print ("dropping table: ", row[1])
+            cursor.execute("drop table " + row[1] + " cascade") 
+        cursor.close()
+        conn.close()
+        return true
+    except e:
+        sys.stderr.write("clear database encountered an error: " + str(e))
+        return False
+        
+
 def restoreDatabase(ctx, lock):
     with lock:
+        if not clearDatabase(ctx):
+            return False
         with open(home + "/.pgpass", "w+") as f:
             f.write(ctx["dbhost"] + ":" + ctx["dbport"] + ":" + ctx["dbname"] + ":" + ctx["dbuser"] + ":" + ctx["dbpass"])
             os.chmod(home + "/.pgpass", stat.S_IREAD | stat.S_IWRITE)
             pgdumpfile = ctx["backupDir"] + "/" + str(datetime.datetime.now())
-            conn = connect(user=ctx["dbuser"], password=ctx["dbpass"], host=ctx["dbhost"], dbname=ctx["dbname"])
-            cursor = conn.cursor()
-            
-            try:
-                cursor.execute("SELECT table_schema,table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_schema,table_name")
-                rows = cursor.fetchall()
-                for row in rows:
-                    print "dropping table: ", row[1]   
-                    cursor.execute("drop table " + row[1] + " cascade") 
-                    cursor.close()
-                    conn.close()        
-            except e:
-                sys.stderr.write("restore encountered an error: " + str(e))
-                return False
 
             cp = subprocess.run(["psql", "-d", ctx["dbname"], "-U", ctx["dbuser"], "-h", ctx["dbhost"], "-p", ctx["dbport"], "-f", pgdumpfile])
             if cp.returncode != 0:
@@ -56,6 +63,7 @@ def restoreDatabase(ctx, lock):
                 return False
             else:
                 return True
+            
 
 def dataDictionaryBackUpDirectory(ctx):
     return ctx["backupDir"] + "/redcap_data_dictionary"

@@ -20,6 +20,7 @@ def test_downloadDataDictionary():
     reload.downloadDataDictionary(ctx)
     assert filecmp.cmp(ctx["dataDictionaryInputFilePath"], "redcap/metadata.json")
 
+
 def test_etl():
     os.chdir("/")
     ctx = reload.context()
@@ -34,6 +35,7 @@ def test_etl():
 def test_sync():
     os.chdir("/")
     ctx = reload.context()
+    reload.clearDatabase(ctx)
     engine = create_engine("postgresql+psycopg2://" + ctx["dbuser"] + ":" + ctx["dbpass"] + "@" + ctx["dbhost"] + ":" + ctx["dbport"] + "/" + ctx["dbname"])
     conn = engine.connect()
     rs = conn.execute('''SELECT COUNT(*) FROM "Proposal"''').fetchall()
@@ -88,7 +90,7 @@ def test_restore_database():
     directory = ctx["backupDir"]
     os.makedirs(directory)
     lock = RLock()
-    assert reload.backUpDatabase(ctx, lock)
+    reload.backUpDatabase(ctx, lock)
     assert reload.restoreDatabase(ctx, lock)
     shutil.rmtree(directory)
 
