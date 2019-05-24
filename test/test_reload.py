@@ -4,6 +4,7 @@ from sqlalchemy import create_engine
 import os
 import os.path
 import shutil
+from multiprocessing import Process, RLock
 
 
 def test_downloadData():
@@ -67,4 +68,28 @@ def test_back_data_dictionary_makedirs_exists():
     reload.downloadDataDictionary(ctx)
     assert reload.backUpDataDictionary(ctx)
     shutil.rmtree(directory)
+
+
+def test_back_up_database():
+    test_sync()
+    os.chdir("/")
+    ctx = reload.context()
+    directory = ctx["backupDir"]
+    os.makedirs(directory)
+    lock = RLock()
+    assert reload.backUpDatabase(ctx, lock)
+    shutil.rmtree(directory)
+
+
+def test_restore_database():
+    test_sync()
+    os.chdir("/")
+    ctx = reload.context()
+    directory = ctx["backupDir"]
+    os.makedirs(directory)
+    lock = RLock()
+    assert reload.backUpDatabase(ctx, lock)
+    assert reload.restoreDatabase(ctx, lock)
+    shutil.rmtree(directory)
+
 
