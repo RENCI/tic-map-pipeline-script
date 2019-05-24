@@ -10,6 +10,7 @@ import datetime
 from pathlib import Path
 import filecmp
 import shutil
+import json
 from multiprocessing import Process, RLock
 import logging
 
@@ -229,7 +230,7 @@ if __name__ == "__main__":
     p = Process(target = entrypoint, args=[ctx, lock], kwargs={
         "create_tables": cdb,
         "insert_data": idb,
-        "schedule": s,
+        "reload": s,
         "one_off": o,
         "schedule_run_time": scheduleRunTime
     })
@@ -240,12 +241,18 @@ if __name__ == "__main__":
         @app.route("/backup")
         def backup():
             ctx = context()
-            backUpDatabase(ctx, lock)
+            pBackup = Process(target = backUpDatabase, args=[ctx, lock])
+            pBackup.start()
+            return json.dumps("")
     
         @app.route("/sync")
         def sync():
             ctx = context()
-            entrypoint(ctx, lock, one_off=True)
+            pSync = Process(target = entrypoint, args=[ctx, lock], kwargs={
+                "one_off": True
+            })
+            pSync.start()
+            return json.dumps("")
             
         app.run(host="0.0.0.0")
     p.join()
