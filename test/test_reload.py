@@ -6,6 +6,8 @@ import os.path
 import shutil
 from multiprocessing import Process, RLock
 import datetime
+import requests
+import time
 
 
 def test_downloadData():
@@ -126,6 +128,33 @@ def test_restore_database():
     reload.clearDatabase(ctx)
     reload.createTables(ctx)
 
+
+def test_sync_endpoint(cleanup=True):
+    os.chdir("/")
+    ctx = reload.context()
+    lock = RLock()
+    p = Process(target = reload.server, args=[ctx, lock], kwargs={})
+    p.start()
+    time.sleep(10)
+    try:
+        resp = requests.post("http://localhost:5000/sync")
+        assert resp.status_code == 200
+    finally:
+        p.terminate()
+
+    
+def test_back_up_endpoint(cleanup=True):
+    os.chdir("/")
+    ctx = reload.context()
+    lock = RLock()
+    p = Process(target = reload.server, args=[ctx, lock], kwargs={})
+    p.start()
+    time.sleep(10)
+    try:
+        resp = requests.get("http://localhost:5000/backup")
+        assert resp.status_code == 200
+    finally:
+        p.terminate()
 
 
 

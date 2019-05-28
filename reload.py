@@ -14,6 +14,8 @@ import json
 from multiprocessing import Process, RLock
 import logging
 from pathlib import Path
+from stat import S_ISREG, ST_MTIME, ST_MODE
+from flask import Flask, request
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -260,8 +262,47 @@ def entrypoint(ctx, lock, create_tables=None, insert_data=None, reload=None, one
             schedule.run_pending()
             time.sleep(1000)
 
+def server(ctx, lock):
+    app = Flask(__name__)
 
-from flask import Flask
+    @app.route("/backup", methods=['GET', 'POST'])
+    def backup():
+        if request.method == 'GET':
+            return getBackup(ctx)
+        else:
+            return postBackup(ctx, lock)
+        
+    def getBackup(ctx):
+        dirpath = ctx["backupDir"]
+        entries = (os.path.join(dirpath, fn) for fn in os.listdir(dirpath))
+        entries = ((os.stat(path), path) for path in entries)
+        entries = ((stat[ST_MTIME], path) for stat, path in entries if S_ISREG(stat[ST_MODE]))
+        entries = (path for _, path in sorted(entries, reverse=True))
+        entries = list(entries)
+                          
+        return json.dumps(entries)
+    
+    def postBackup(ctx, lock):
+        ts = str(datetime.datetime.now())
+        pBackup = Process(target = backUpDatabase, args=[ctx, lock, ts])
+        pBackup.start()
+        return json.dumps("")
+    
+    @app.route("/restore/<string:ts>", methods=['POST'])
+    def restore(ts):
+        pRestore = Process(target = restoreDatabase, args=[ctx, lock, ts])
+        pRestore.start()
+        return json.dumps("")
+    
+    @app.route("/sync", methods=['POST'])
+    def sync():
+        pSync = Process(target = entrypoint, args=[ctx, lock], kwargs={
+            "one_off": True
+        })
+        pSync.start()
+        return json.dumps("")
+            
+    app.run(host="0.0.0.0")
 
 if __name__ == "__main__":
     ctx = context()
@@ -281,33 +322,7 @@ if __name__ == "__main__":
     })
     p.start()
     if runServer:
-        app = Flask(__name__)
-
-        @app.route("/backup")
-        def backup():
-            ctx = context()
-            ts = str(datetime.datetime.now())
-            pBackup = Process(target = backUpDatabase, args=[ctx, lock, ts])
-            pBackup.start()
-            return json.dumps("")
-    
-        @app.route("/restore/<string:ts>")
-        def restore(ts):
-            ctx = context()
-            pRestore = Process(target = restoreDatabase, args=[ctx, lock, ts])
-            pRestore.start()
-            return json.dumps("")
-    
-        @app.route("/sync")
-        def sync():
-            ctx = context()
-            pSync = Process(target = entrypoint, args=[ctx, lock], kwargs={
-                "one_off": True
-            })
-            pSync.start()
-            return json.dumps("")
-            
-        app.run(host="0.0.0.0")
+        server(ctx, lock)
     p.join()
         
     

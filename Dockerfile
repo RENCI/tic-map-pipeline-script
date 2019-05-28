@@ -56,7 +56,7 @@ ENV RELOAD_ONE_OFF=0
 # set to 1 to schedule periodic reload
 ENV RELOAD_SCHEDULE=1
 # set to 1 to create tables
-ENV CREATE_TABLES=0
+ENV CREATE_TABLES=1
 # set to 1 to insert data
 ENV INSERT_DATA=0
 ENV SERVER=0
