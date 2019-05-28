@@ -6,7 +6,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    command: ["-s", "-k", "test_restore_database"]
+    command: ["-s"] # , "-k", "test_restore_database"]
     image: pmd-pipeline-reload-test:0.2.0
     environment:
       POSTGRES_DATABASE_NAME: $POSTGRES_DB
@@ -22,7 +22,6 @@ services:
       SCHEDULE_RUN_TIME: $SCHEDULE_RUN_TIME
     volumes:
       - $POSTGRES_DUMP_PATH:/backup
-      - ./tables:/data/tables
     depends_on:
       - db
       - redcap

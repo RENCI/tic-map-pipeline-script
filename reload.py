@@ -65,8 +65,8 @@ def restoreDatabase(ctx, lock, ts):
         pgpass(ctx)
         pgdumpfile = ctx["backupDir"] + "/" + ts
         print("running psql")
-        cp, out, err = subprocess.run(["psql", "-d", ctx["dbname"], "-U", ctx["dbuser"], "-h", ctx["dbhost"], "-p", ctx["dbport"], "-f", pgdumpfile], capture_output = True)
-        print("psql done ["+out+"]["+err+"]")
+        cp = subprocess.run(["psql", "-d", ctx["dbname"], "-U", ctx["dbuser"], "-h", ctx["dbhost"], "-p", ctx["dbport"], "-f", pgdumpfile])
+        print("psql done")
         if cp.returncode != 0:
             sys.stderr.write("restore encountered an error: " + str(cp.returncode))
             return False
