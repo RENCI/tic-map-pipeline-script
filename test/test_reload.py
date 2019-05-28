@@ -116,6 +116,8 @@ def test_back_up_database(cleanup=True):
 def test_restore_database():
     print("test_restore_database")
     ts = test_back_up_database(False)
+    os.chdir("/")
+    ctx = reload.context()
     reload.clearDatabase(ctx)
     reload.createTables(ctx)
     assert reload.restoreDatabase(ctx, lock, ts)
