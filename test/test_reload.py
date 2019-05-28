@@ -21,6 +21,17 @@ def test_downloadDataDictionary():
     assert filecmp.cmp(ctx["dataDictionaryInputFilePath"], "redcap/metadata.json")
 
 
+def test_clear_database():
+    os.chdir("/")
+    ctx = reload.context()
+    reload.clearDatabase(ctx)
+    engine = create_engine("postgresql+psycopg2://" + ctx["dbuser"] + ":" + ctx["dbpass"] + "@" + ctx["dbhost"] + ":" + ctx["dbport"] + "/" + ctx["dbname"])
+    conn = engine.connect()
+            
+    rs = conn.execute("SELECT table_schema,table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_schema,table_name").fetchall()
+    assert len(rs) == 0
+
+    
 def test_etl():
     os.chdir("/")
     ctx = reload.context()
@@ -36,21 +47,22 @@ def test_sync():
     os.chdir("/")
     ctx = reload.context()
     reload.clearDatabase(ctx)
+    reload.createTables(ctx)
     engine = create_engine("postgresql+psycopg2://" + ctx["dbuser"] + ":" + ctx["dbpass"] + "@" + ctx["dbhost"] + ":" + ctx["dbport"] + "/" + ctx["dbname"])
     conn = engine.connect()
     rs = conn.execute('''SELECT COUNT(*) FROM "Proposal"''').fetchall()
     assert len(rs) == 1
     for row in rs:
         assert row[0] == 0
-    
-    reload.downloadData(ctx)
-    reload.downloadDataDictionary(ctx)
-    reload.etl(ctx)
+
+    shutil.copytree("/etlout", "/tables")
+    print("sync database")
     assert reload.syncDatabase(ctx)
     rs = conn.execute('''SELECT COUNT(*) FROM "Proposal"''').fetchall()
     assert len(rs) == 1
     for row in rs:
         assert row[0] == 1
+    assert("database synced")
 
 
 def test_back_data_dictionary():
@@ -73,25 +85,25 @@ def test_back_data_dictionary_makedirs_exists():
 
 
 def test_back_up_database():
+    print("test_back_up_database")
     test_sync()
     os.chdir("/")
     ctx = reload.context()
-    directory = ctx["backupDir"]
-    os.makedirs(directory)
     lock = RLock()
-    assert reload.backUpDatabase(ctx, lock)
-    shutil.rmtree(directory)
+    ts = str(datetime.datetime.now())
+    assert reload.backUpDatabase(ctx, lock, ts)
 
 
 def test_restore_database():
+    print("test_restore_database")
     test_sync()
     os.chdir("/")
     ctx = reload.context()
-    directory = ctx["backupDir"]
-    os.makedirs(directory)
     lock = RLock()
-    reload.backUpDatabase(ctx, lock)
-    assert reload.restoreDatabase(ctx, lock)
-    shutil.rmtree(directory)
+    ts = str(datetime.datetime.now())
+    reload.backUpDatabase(ctx, lock, ts)
+    assert reload.restoreDatabase(ctx, lock, ts)
+
+
 
 

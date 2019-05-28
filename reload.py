@@ -13,25 +13,31 @@ import shutil
 import json
 from multiprocessing import Process, RLock
 import logging
+from pathlib import Path
 
 logging.basicConfig(level=logging.DEBUG)
 
-def backUpDatabase(ctx, lock):
+def pgpass(ctx):
+    home = str(Path.home())
+    with open(home + "/.pgpass", "w+") as f:
+        f.write(ctx["dbhost"] + ":" + ctx["dbport"] + ":" + ctx["dbname"] + ":" + ctx["dbuser"] + ":" + ctx["dbpass"])
+    os.chmod(home + "/.pgpass", stat.S_IREAD | stat.S_IWRITE)
+
+def backUpDatabase(ctx, lock, ts):
     with lock:
-        with open(home + "/.pgpass", "w+") as f:
-            f.write(ctx["dbhost"] + ":" + ctx["dbport"] + ":" + ctx["dbname"] + ":" + ctx["dbuser"] + ":" + ctx["dbpass"])
-            os.chmod(home + "/.pgpass", stat.S_IREAD | stat.S_IWRITE)
-            pgdumpfile = ctx["backupDir"] + "/" + str(datetime.datetime.now())
-            cp = subprocess.run(["pg_dump", "-O", "-d", ctx["dbname"], "-U", ctx["dbuser"], "-h", ctx["dbhost"], "-p", ctx["dbport"], "-f", pgdumpfile])
-            if cp.returncode != 0:
-                sys.stderr.write("backup encountered an error: " + str(cp.returncode))
-                return False
-            else:
-                return True
+        pgpass(ctx)
+        pgdumpfile = ctx["backupDir"] + "/" + ts
+        cp = subprocess.run(["pg_dump", "-O", "-d", ctx["dbname"], "-U", ctx["dbuser"], "-h", ctx["dbhost"], "-p", ctx["dbport"], "-f", pgdumpfile])
+        if cp.returncode != 0:
+            sys.stderr.write("backup encountered an error: " + str(cp.returncode))
+            return False
+        else:
+            return True
 
             
 def clearDatabase(ctx):
     conn = connect(user=ctx["dbuser"], password=ctx["dbpass"], host=ctx["dbhost"], dbname=ctx["dbname"])
+    conn.autocommit = True
     cursor = conn.cursor()
             
     try:
@@ -39,30 +45,33 @@ def clearDatabase(ctx):
         rows = cursor.fetchall()
         for row in rows:
             print ("dropping table: ", row[1])
-            cursor.execute("drop table \"" + row[1] + "\" cascade") 
+            cursor.execute("drop table \"" + row[1] + "\" cascade")
+            print("table dropped")
+        print("closing cursor")
         cursor.close()
+        print("closing connection")
         conn.close()
+        print("database cleared")
         return True
     except Exception as e:
         sys.stderr.write("clear database encountered an error: " + str(e))
         return False
         
 
-def restoreDatabase(ctx, lock):
+def restoreDatabase(ctx, lock, ts):
     with lock:
         if not clearDatabase(ctx):
             return False
-        with open(home + "/.pgpass", "w+") as f:
-            f.write(ctx["dbhost"] + ":" + ctx["dbport"] + ":" + ctx["dbname"] + ":" + ctx["dbuser"] + ":" + ctx["dbpass"])
-            os.chmod(home + "/.pgpass", stat.S_IREAD | stat.S_IWRITE)
-            pgdumpfile = ctx["backupDir"] + "/" + str(datetime.datetime.now())
-
-            cp = subprocess.run(["psql", "-d", ctx["dbname"], "-U", ctx["dbuser"], "-h", ctx["dbhost"], "-p", ctx["dbport"], "-f", pgdumpfile])
-            if cp.returncode != 0:
-                sys.stderr.write("restore encountered an error: " + str(cp.returncode))
-                return False
-            else:
-                return True
+        pgpass(ctx)
+        pgdumpfile = ctx["backupDir"] + "/" + ts
+        print("running psql")
+        cp, out, err = subprocess.run(["psql", "-d", ctx["dbname"], "-U", ctx["dbuser"], "-h", ctx["dbhost"], "-p", ctx["dbport"], "-f", pgdumpfile], capture_output = True)
+        print("psql done ["+out+"]["+err+"]")
+        if cp.returncode != 0:
+            sys.stderr.write("restore encountered an error: " + str(cp.returncode))
+            return False
+        else:
+            return True
             
 
 def dataDictionaryBackUpDirectory(ctx):
@@ -131,7 +140,7 @@ def insertData(ctx):
     tables = getTables(ctx)
     for f in tables:
         print("inserting into table", f)
-        cp = subprocess.run(["csvsql", "--db", "postgres://"+ctx["dbuser"]+":" + ctx["dbpass"] + "@" + ctx["dbhost"] +"/" + ctx["dbname"], "--insert", "--no-create", "-d", ",", "-e", "utf8", "--no-inference", "data/tables/" + f])
+        cp = subprocess.run(["csvsql", "--db", "postgresql://"+ctx["dbuser"]+":" + ctx["dbpass"] + "@" + ctx["dbhost"] +"/" + ctx["dbname"], "--insert", "--no-create", "-d", ",", "-e", "utf8", "--no-inference", "data/tables/" + f])
         if cp.returncode != 0:
             print("error syncing database", cp.returncode)
             return False
@@ -227,7 +236,8 @@ def runPipeline(ctx, lock):
         if not etl(ctx):
             return False
 
-        if not backUpDatabase(ctx):
+        ts = str(datetime.datetime.now())
+        if not backUpDatabase(ctx, lock, ts):
             return False
         
         return syncDatabase(ctx)
@@ -276,14 +286,15 @@ if __name__ == "__main__":
         @app.route("/backup")
         def backup():
             ctx = context()
-            pBackup = Process(target = backUpDatabase, args=[ctx, lock])
+            ts = str(datetime.datetime.now())
+            pBackup = Process(target = backUpDatabase, args=[ctx, lock, ts])
             pBackup.start()
             return json.dumps("")
     
-        @app.route("/restore")
-        def backup():
+        @app.route("/restore/<string:ts>")
+        def restore(ts):
             ctx = context()
-            pRestore = Process(target = restoreDatabase, args=[ctx, lock])
+            pRestore = Process(target = restoreDatabase, args=[ctx, lock, ts])
             pRestore.start()
             return json.dumps("")
     
