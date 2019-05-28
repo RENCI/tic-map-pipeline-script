@@ -1,6 +1,6 @@
-FROM pmd-pipeline-reload:0.2.0
+FROM pmd-pipeline-reload:0.2.1
 
-RUN pip3 install pytest hypothesis
+RUN pip3 install pytest hypothesis redis rq
 RUN mkdir test
 RUN mv reload.py test
 

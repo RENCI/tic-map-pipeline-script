@@ -12,7 +12,7 @@
 # need to mount backup dir to POSTGRES_DUMP_PATH
 FROM ubuntu:18.04 AS schema
 
-RUN apt-get update && apt-get install -y wget openjdk-11-jdk curl
+RUN apt-get update && apt-get install -y wget curl
 
 COPY ["HEAL-data-mapping/HEAL data mapping_finalv6.csv", "HEAL data mapping.csv"]
 
@@ -24,7 +24,7 @@ RUN ["stack", "exec", "map-pipeline-schema-exe", "/HEAL data mapping.csv", "/tab
 
 FROM ubuntu:18.04 AS transform
 
-RUN apt-get update && apt-get install -y wget openjdk-11-jdk gnupg
+RUN apt-get update && apt-get install -y wget openjdk-8-jdk gnupg
 
 RUN echo "deb https://dl.bintray.com/sbt/debian /" | tee -a /etc/apt/sources.list.d/sbt.list
 RUN apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2EE0EA64E40A89B84B2DF73499E82A75642AC823
@@ -43,8 +43,9 @@ RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ bionic-pgdg main" | tee -
 
 RUN wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
 
-RUN apt-get update && apt-get install -y python3-pip wget openjdk-11-jdk postgresql-client-11
-RUN pip3 install schedule pandas psycopg2-binary csvkit requests flask
+RUN apt-get update && apt-get install -y python3-pip wget openjdk-8-jdk postgresql-client-11 git
+RUN pip3 install schedule pandas psycopg2-binary csvkit requests flask redis # sherlock
+RUN pip3 install git+https://github.com/vaidik/sherlock.git@77742ba91a24f75ee62e1895809901bde018654f
 
 RUN wget http://apache.spinellicreations.com/spark/spark-2.4.3/spark-2.4.3-bin-hadoop2.7.tgz
 RUN tar zxvf spark-2.4.3-bin-hadoop2.7.tgz

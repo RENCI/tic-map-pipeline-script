@@ -4,7 +4,7 @@ from sqlalchemy import create_engine
 import os
 import os.path
 import shutil
-from multiprocessing import Process, RLock
+from multiprocessing import Process
 import datetime
 import requests
 import time
@@ -104,9 +104,8 @@ def test_back_up_database(cleanup=True):
     test_sync(False)
     os.chdir("/")
     ctx = reload.context()
-    lock = RLock()
     ts = str(datetime.datetime.now())
-    assert reload.backUpDatabase(ctx, lock, ts)
+    assert reload._backUpDatabase(ctx, ts)
     if cleanup:
         os.remove(ctx["backupDir"] + "/" + ts)
         reload.clearDatabase(ctx)
@@ -120,41 +119,138 @@ def test_restore_database():
     ts = test_back_up_database(False)
     os.chdir("/")
     ctx = reload.context()
-    lock = RLock()
     reload.clearDatabase(ctx)
     reload.createTables(ctx)
-    assert reload.restoreDatabase(ctx, lock, ts)
+    assert reload._restoreDatabase(ctx, ts)
     os.remove(ctx["backupDir"] + "/" + ts)
     reload.clearDatabase(ctx)
     reload.createTables(ctx)
 
 
-def test_sync_endpoint(cleanup=True):
+def test_back_up_database_with_lock(cleanup=True):
+    print("test_back_up_database")
+    test_sync(False)
     os.chdir("/")
     ctx = reload.context()
-    lock = RLock()
-    p = Process(target = reload.server, args=[ctx, lock], kwargs={})
+    ts = str(datetime.datetime.now())
+    assert reload.backUpDatabase(ctx, ts)
+    if cleanup:
+        os.remove(ctx["backupDir"] + "/" + ts)
+        reload.clearDatabase(ctx)
+        reload.createTables(ctx)
+    else:
+        return ts
+
+
+def test_restore_database_with_lock():
+    print("test_restore_database")
+    ts = test_back_up_database(False)
+    os.chdir("/")
+    ctx = reload.context()
+    reload.clearDatabase(ctx)
+    reload.createTables(ctx)
+    assert reload.restoreDatabase(ctx, ts)
+    os.remove(ctx["backupDir"] + "/" + ts)
+    reload.clearDatabase(ctx)
+    reload.createTables(ctx)
+
+
+def test_sync_endpoint():
+    os.chdir("/")
+    ctx = reload.context()
+    p = Process(target = reload.server, args=[ctx], kwargs={})
     p.start()
     time.sleep(10)
     try:
         resp = requests.post("http://localhost:5000/sync")
         assert resp.status_code == 200
+        print(resp.json())
+        assert isinstance(resp.json(), str)
     finally:
         p.terminate()
+        reload.clearTasks()
 
     
-def test_back_up_endpoint(cleanup=True):
+def test_back_up_endpoint():
     os.chdir("/")
     ctx = reload.context()
-    lock = RLock()
-    p = Process(target = reload.server, args=[ctx, lock], kwargs={})
+    p = Process(target = reload.server, args=[ctx], kwargs={})
     p.start()
     time.sleep(10)
     try:
         resp = requests.get("http://localhost:5000/backup")
         assert resp.status_code == 200
+        print(resp.json())
+        assert isinstance(resp.json(), list)
     finally:
         p.terminate()
+        reload.clearTasks()
+
+
+def test_task():
+    os.chdir("/")
+    ctx = reload.context()
+    p = Process(target = reload.server, args=[ctx], kwargs={})
+    p.start()
+    time.sleep(10)
+    try:
+        resp0 = requests.get("http://localhost:5000/task")
+        assert len(resp0.json()) == 0
+        resp = requests.post("http://localhost:5000/backup")
+        resp2 = requests.get("http://localhost:5000/task")
+        assert len(resp2.json()) == 1
+        assert resp.json() in resp2.json()
+    finally:
+        p.terminate()
+        reload.clearTasks()
+
+
+def test_get_task():
+    os.chdir("/")
+    ctx = reload.context()
+    p = Process(target = reload.server, args=[ctx], kwargs={})
+    p.start()
+    time.sleep(10)
+    try:
+        resp = requests.post("http://localhost:5000/backup")
+        resp2 = requests.get("http://localhost:5000/task/" + resp.json())
+        assert "name" in resp2.json()
+        assert "created_at" in resp2.json()
+        assert "ended_at" in resp2.json()
+        assert "started_at" in resp2.json()
+        assert "enqueued_at" in resp2.json()
+        assert "description" in resp2.json()
+        assert "status" in resp2.json()
+
+    finally:
+        p.terminate()
+        reload.clearTasks()
+
+
+def test_delete_task(cleanup=True):
+    os.chdir("/")
+    ctx = reload.context()
+    p = Process(target = reload.server, args=[ctx], kwargs={})
+    p.start()
+    time.sleep(10)
+    try:
+        resp0 = requests.get("http://localhost:5000/task")
+        assert len(resp0.json()) == 0
+        resp = requests.post("http://localhost:5000/sync")
+        resp1 = requests.post("http://localhost:5000/sync")
+        resp2 = requests.get("http://localhost:5000/task")
+        assert len(resp2.json()) == 2
+        assert resp.json() in resp2.json()
+        assert resp1.json() in resp2.json()
+        requests.delete("http://localhost:5000/task/" + resp1.json())
+        resp3 = requests.get("http://localhost:5000/task")
+        assert len(resp3.json()) == 1
+        assert resp.json() in resp3.json()
+        assert resp1.json() not in resp3.json()
+    finally:
+        p.terminate()
+        reload.clearTasks()
+
 
 
 

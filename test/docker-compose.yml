@@ -1,13 +1,26 @@
 version: '3'
 
 services:
+  redis:
+    container_name: pmd-pipeline-reload-test-redis-mock
+    build:
+      context: ./redis/
+      dockerfile: Dockerfile
+    restart: always
+    environment: {}
+    volumes:
+      - ./redis/data/:/data
+    expose:
+      - 6379
+    command: ["--appendonly", "yes"]
+    
   pipeline:
     container_name: pmd-pipeline-reload-test
     build:
       context: .
       dockerfile: Dockerfile
-    command: ["-s"] # , "-k", ""]
-    image: pmd-pipeline-reload-test:0.2.0
+    command: ["-s"] # , "-k", "test_delete_task"]
+    image: pmd-pipeline-reload-test:0.2.1
     environment:
       POSTGRES_DATABASE_NAME: $POSTGRES_DB
       POSTGRES_USER: $POSTGRES_USER
@@ -21,6 +34,14 @@ services:
       RELOAD_DATABASE: $RELOAD_DATABASE
       SCHEDULE_RUN_TIME: $SCHEDULE_RUN_TIME
       SERVER: 1
+      REDIS_QUEUE_HOST: redis
+      REDIS_QUEUE_PORT: 6379
+      REDIS_QUEUE_DB: 0
+      REDIS_LOCK_HOST: redis
+      REDIS_LOCK_PORT: 6379
+      REDIS_LOCK_DB: 1
+      REDIS_LOCK_EXPIRE: 3600
+      REDIS_LOCK_TIMEOUT: 3600
     volumes:
       - $POSTGRES_DUMP_PATH:/backup
     depends_on:
@@ -33,7 +54,7 @@ services:
     build:
       context: ./db/
       dockerfile: Dockerfile
-    image: pmd-pipeline-reload-test-db-mock:0.2.0
+    image: pmd-pipeline-reload-test-db-mock:0.2.1
     environment:
       POSTGRES_DB: $POSTGRES_DB
       POSTGRES_USER: $POSTGRES_USER
@@ -47,7 +68,7 @@ services:
     build:
       context: ./redcap/
       dockerfile: Dockerfile
-    image: pmd-pipeline-reload-test-redcap-mock:0.2.0
+    image: pmd-pipeline-reload-test-redcap-mock:0.2.1
     environment:
       REDCAP_APPLICATION_TOKEN: $REDCAP_APPLICATION_TOKEN
     expose:

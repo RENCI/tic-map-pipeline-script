@@ -11,11 +11,21 @@ from pathlib import Path
 import filecmp
 import shutil
 import json
-from multiprocessing import Process, RLock
+from multiprocessing import Process
 import logging
 from pathlib import Path
 from stat import S_ISREG, ST_MTIME, ST_MODE
 from flask import Flask, request
+import sherlock
+from sherlock import Lock
+import redis
+from rq import Queue
+
+sherlock.configure(backend=sherlock.backends.REDIS, client=redis.StrictRedis(host=os.environ["REDIS_LOCK_HOST"], port=int(os.environ["REDIS_LOCK_PORT"]), db=int(os.environ["REDIS_LOCK_DB"])), expire=int(os.environ["REDIS_LOCK_EXPIRE"]), timeout=int(os.environ["REDIS_LOCK_TIMEOUT"]))
+
+G_LOCK="g_lock"
+
+q = Queue(connection=redis.StrictRedis(host=os.environ["REDIS_QUEUE_HOST"], port=int(os.environ["REDIS_QUEUE_PORT"]), db=int(os.environ["REDIS_QUEUE_DB"])))
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -25,16 +35,21 @@ def pgpass(ctx):
         f.write(ctx["dbhost"] + ":" + ctx["dbport"] + ":" + ctx["dbname"] + ":" + ctx["dbuser"] + ":" + ctx["dbpass"])
     os.chmod(home + "/.pgpass", stat.S_IREAD | stat.S_IWRITE)
 
-def backUpDatabase(ctx, lock, ts):
-    with lock:
-        pgpass(ctx)
-        pgdumpfile = ctx["backupDir"] + "/" + ts
-        cp = subprocess.run(["pg_dump", "-O", "-d", ctx["dbname"], "-U", ctx["dbuser"], "-h", ctx["dbhost"], "-p", ctx["dbport"], "-f", pgdumpfile])
-        if cp.returncode != 0:
-            sys.stderr.write("backup encountered an error: " + str(cp.returncode))
-            return False
-        else:
-            return True
+
+def backUpDatabase(ctx, ts):
+    with Lock(G_LOCK):
+        return _backUpDatabase(ctx, ts)
+
+
+def _backUpDatabase(ctx, ts):
+    pgpass(ctx)
+    pgdumpfile = ctx["backupDir"] + "/" + ts
+    cp = subprocess.run(["pg_dump", "-O", "-d", ctx["dbname"], "-U", ctx["dbuser"], "-h", ctx["dbhost"], "-p", ctx["dbport"], "-f", pgdumpfile])
+    if cp.returncode != 0:
+        sys.stderr.write("backup encountered an error: " + str(cp.returncode))
+        return False
+    else:
+        return True
 
             
 def clearDatabase(ctx):
@@ -60,8 +75,12 @@ def clearDatabase(ctx):
         return False
         
 
-def restoreDatabase(ctx, lock, ts):
-    with lock:
+def restoreDatabase(ctx, ts):
+    with Lock(G_LOCK):
+        return _restoreDatabase(ctx, ts)
+
+
+def _restoreDatabase(ctx, ts):
         if not clearDatabase(ctx):
             return False
         pgpass(ctx)
@@ -207,6 +226,10 @@ def downloadDataDictionary(ctx):
     download(ctx, headers, data, ctx["dataDictionaryInputFilePath"])
 
 
+def clearTasks():
+    q.empty()
+
+
 def context():
     return {
         "home": str(Path.home()),
@@ -227,8 +250,12 @@ def context():
     }
 
 
-def runPipeline(ctx, lock):
-    with lock:
+def runPipeline(ctx):
+    with Lock(G_LOCK):
+        return _runPipeline(ctx)
+
+
+def _runPipeline(ctx):
         if ctx["reloaddb"]:
             downloadData(ctx)
             downloadDataDictionary(ctx)
@@ -239,14 +266,14 @@ def runPipeline(ctx, lock):
             return False
 
         ts = str(datetime.datetime.now())
-        if not backUpDatabase(ctx, lock, ts):
+        if not _backUpDatabase(ctx, ts):
             return False
         
         return syncDatabase(ctx)
 
 
-def entrypoint(ctx, lock, create_tables=None, insert_data=None, reload=None, one_off=None, schedule_run_time=None):
-    with lock:
+def entrypoint(ctx, create_tables=None, insert_data=None, reload=None, one_off=None, schedule_run_time=None):
+    with Lock(G_LOCK):
         if create_tables:
             createTables(ctx)
 
@@ -254,15 +281,15 @@ def entrypoint(ctx, lock, create_tables=None, insert_data=None, reload=None, one
             insertData(ctx)
 
         if one_off:
-            runPipeline(ctx, lock)
+            _runPipeline(ctx)
             
     if reload:
-        schedule.every().day.at(schedule_run_time).do(lambda: runPipeline(ctx, lock))
+        schedule.every().day.at(schedule_run_time).do(lambda: runPipeline(ctx))
         while True:
             schedule.run_pending()
             time.sleep(1000)
 
-def server(ctx, lock):
+def server(ctx):
     app = Flask(__name__)
 
     @app.route("/backup", methods=['GET', 'POST'])
@@ -270,38 +297,63 @@ def server(ctx, lock):
         if request.method == 'GET':
             return getBackup(ctx)
         else:
-            return postBackup(ctx, lock)
+            return postBackup(ctx)
         
     def getBackup(ctx):
         dirpath = ctx["backupDir"]
-        entries = (os.path.join(dirpath, fn) for fn in os.listdir(dirpath))
-        entries = ((os.stat(path), path) for path in entries)
-        entries = ((stat[ST_MTIME], path) for stat, path in entries if S_ISREG(stat[ST_MODE]))
-        entries = (path for _, path in sorted(entries, reverse=True))
+        entries = ((os.path.join(dirpath, fn), fn) for fn in os.listdir(dirpath))
+        entries = ((os.stat(path), fn) for path, fn in entries)
+        entries = ((stat[ST_MTIME], fn) for stat, fn in entries if S_ISREG(stat[ST_MODE]))
+        entries = (fn for _, fn in sorted(entries, reverse=True))
         entries = list(entries)
                           
         return json.dumps(entries)
     
-    def postBackup(ctx, lock):
+    def postBackup(ctx):
         ts = str(datetime.datetime.now())
-        pBackup = Process(target = backUpDatabase, args=[ctx, lock, ts])
-        pBackup.start()
-        return json.dumps("")
+        pBackup = q.enqueue(backUpDatabase, args=[ctx, ts])
+        return json.dumps(pBackup.id)
     
     @app.route("/restore/<string:ts>", methods=['POST'])
     def restore(ts):
-        pRestore = Process(target = restoreDatabase, args=[ctx, lock, ts])
-        pRestore.start()
-        return json.dumps("")
+        pRestore = q.enqueue(restoreDatabase, args=[ctx, ts])
+        return json.dumps(pRestore.id)
     
     @app.route("/sync", methods=['POST'])
     def sync():
-        pSync = Process(target = entrypoint, args=[ctx, lock], kwargs={
+        pSync = q.enqueue(entrypoint, args=[ctx], kwargs={
             "one_off": True
         })
-        pSync.start()
-        return json.dumps("")
+        return json.dumps(pSync.id)
             
+    @app.route("/task", methods=["GET"])
+    def task():
+        return json.dumps(q.job_ids)
+            
+    @app.route("/task/<string:taskid>", methods=["GET", "DELETE"])
+    def taskId(taskid):
+        if request.method == "GET":
+            return getTaskId(taskid)
+        else:
+            return deleteTaskId(taskid)
+
+    def getTaskId(taskid):
+        job = q.fetch_job(taskid)
+        return json.dumps({
+            "status": job.get_status(),
+            "name": job.func_name,
+            "created_at": str(job.created_at),
+            "enqueued_at": str(job.enqueued_at),
+            "started_at": str(job.started_at),
+            "ended_at": str(job.ended_at),
+            "description": job.description
+        })
+    
+    def deleteTaskId(taskid):
+        job = q.fetch_job(taskid)
+        job.cancel()
+        return json.dumps(taskid)
+
     app.run(host="0.0.0.0")
 
 if __name__ == "__main__":
@@ -312,8 +364,7 @@ if __name__ == "__main__":
     idb = os.environ["INSERT_DATA"] == "1"
     scheduleRunTime = os.environ["SCHEDULE_RUN_TIME"]
     runServer = os.environ["SERVER"] == "1"
-    lock = RLock()
-    p = Process(target = entrypoint, args=[ctx, lock], kwargs={
+    p = Process(target = entrypoint, args=[ctx], kwargs={
         "create_tables": cdb,
         "insert_data": idb,
         "reload": s,
@@ -322,7 +373,7 @@ if __name__ == "__main__":
     })
     p.start()
     if runServer:
-        server(ctx, lock)
+        server(ctx)
     p.join()
         
     
