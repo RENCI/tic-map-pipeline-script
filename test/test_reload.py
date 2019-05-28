@@ -33,6 +33,7 @@ def test_clear_database():
             
     rs = conn.execute("SELECT table_schema,table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_schema,table_name").fetchall()
     assert len(rs) == 0
+    conn.close()
     reload.createTables(ctx)
 
     
@@ -40,13 +41,13 @@ def test_etl():
     os.chdir("/")
     ctx = reload.context()
     shutil.copy("redcap/record.json", ctx["dataInputFilePath"])
-    shutil.copy("redcap/metadata.json", ctx["dataDictionaryFilePath"])
+    shutil.copy("redcap/metadata.json", ctx["dataDictionaryInputFilePath"])
     assert reload.etl(ctx)
     assert os.path.isfile("/data/tables/Proposal")
     with open("/data/tables/Proposal") as f:
         assert sum(1 for _ in f) == 2
     os.remove(ctx["dataInputFilePath"])
-    os.remove(ctx["dataDictionaryFilePath"])
+    os.remove(ctx["dataDictionaryInputFilePath"])
     shutil.rmtree("/data/tables")
 
 
@@ -69,6 +70,7 @@ def test_sync(cleanup = True):
         assert row[0] == 1
     print("database synced")
     shutil.rmtree("/data/tables")
+    conn.close()
     if cleanup:
         reload.clearDatabase(ctx)
         reload.createTables(ctx)
@@ -77,10 +79,10 @@ def test_sync(cleanup = True):
 def test_back_data_dictionary():
     os.chdir("/")
     ctx = reload.context()
-    shutil.copy("redcap/metadata.json", ctx["dataDictionaryFilePath"])
+    shutil.copy("redcap/metadata.json", ctx["dataDictionaryInputFilePath"])
     assert reload.backUpDataDictionary(ctx)
     directory = reload.dataDictionaryBackUpDirectory(ctx)
-    os.remove(ctx["dataDictionaryFilePath"])
+    os.remove(ctx["dataDictionaryInputFilePath"])
     shutil.rmtree(directory)
 
 
@@ -89,13 +91,13 @@ def test_back_data_dictionary_makedirs_exists():
     ctx = reload.context()
     directory = reload.dataDictionaryBackUpDirectory(ctx)
     os.makedirs(directory)
-    shutil.copy("redcap/metadata.json", ctx["dataDictionaryFilePath"])
+    shutil.copy("redcap/metadata.json", ctx["dataDictionaryInputFilePath"])
     assert reload.backUpDataDictionary(ctx)
-    os.remove(ctx["dataDictionaryFilePath"])
+    os.remove(ctx["dataDictionaryInputFilePath"])
     shutil.rmtree(directory)
 
 
-def test_back_up_database():
+def test_back_up_database(cleanup=True):
     print("test_back_up_database")
     test_sync(False)
     os.chdir("/")
@@ -103,13 +105,23 @@ def test_back_up_database():
     lock = RLock()
     ts = str(datetime.datetime.now())
     assert reload.backUpDatabase(ctx, lock, ts)
-    return ts
+    if cleanup:
+        os.remove(ctx["backupDir"] + "/" + ts)
+        reload.clearDatabase(ctx)
+        reload.createTables(ctx)
+    else:
+        return ts
 
 
 def test_restore_database():
     print("test_restore_database")
-    ts = test_back_up_database()
+    ts = test_back_up_database(False)
+    reload.clearDatabase(ctx)
+    reload.createTables(ctx)
     assert reload.restoreDatabase(ctx, lock, ts)
+    os.remove(ctx["backupDir"] + "/" + ts)
+    reload.clearDatabase(ctx)
+    reload.createTables(ctx)
 
 
 
