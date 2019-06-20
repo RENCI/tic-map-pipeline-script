@@ -14,7 +14,7 @@ docker build
 
 ### How to run test ###
 
-download data dictionary in json format and store it under `test/redcap`
+download data dictionary in json format and store it under `test/redcap/metadata.json`
 
 ```
 cd test
