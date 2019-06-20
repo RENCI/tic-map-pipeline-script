@@ -44,10 +44,11 @@ RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ bionic-pgdg main" | tee -
 RUN wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
 
 RUN apt-get update && apt-get install -y python3-pip wget openjdk-8-jdk postgresql-client-11 git
-RUN pip3 install schedule pandas psycopg2-binary csvkit requests flask redis # sherlock
+RUN pip3 install schedule pandas psycopg2-binary csvkit requests flask redis rq
 RUN pip3 install git+https://github.com/vaidik/sherlock.git@77742ba91a24f75ee62e1895809901bde018654f
 
-RUN wget http://apache.spinellicreations.com/spark/spark-2.4.3/spark-2.4.3-bin-hadoop2.7.tgz
+RUN wget http://apache.spinellicreations.com/spark/spark-2.4.3/spark-2.4.3-bin-hadoop2.7.tgz && echo "E8B7F9E1DEC868282CADCAD81599038A22F48FB597D44AF1B13FCC76B7DACD2A1CAF431F95E394E1227066087E3CE6C2137C4ABAF60C60076B78F959074FF2AD spark-2.4.3-bin-hadoop2.7.tgz" | sha512sum -c -
+
 RUN tar zxvf spark-2.4.3-bin-hadoop2.7.tgz
 ENV PATH="/spark-2.4.3-bin-hadoop2.7/bin:${PATH}"
 # set to 1 to reload data from redcap database
