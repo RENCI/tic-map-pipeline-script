@@ -1,4 +1,5 @@
 import reload
+import server
 import filecmp
 from sqlalchemy import create_engine
 import os
@@ -158,7 +159,7 @@ def test_restore_database_with_lock():
 def test_sync_endpoint():
     os.chdir("/")
     ctx = reload.context()
-    p = Process(target = reload.server, args=[ctx], kwargs={})
+    p = Process(target = server.server, args=[ctx], kwargs={})
     p.start()
     time.sleep(10)
     try:
@@ -174,7 +175,7 @@ def test_sync_endpoint():
 def test_back_up_endpoint():
     os.chdir("/")
     ctx = reload.context()
-    p = Process(target = reload.server, args=[ctx], kwargs={})
+    p = Process(target = server.server, args=[ctx], kwargs={})
     p.start()
     time.sleep(10)
     try:
@@ -190,7 +191,7 @@ def test_back_up_endpoint():
 def test_task():
     os.chdir("/")
     ctx = reload.context()
-    p = Process(target = reload.server, args=[ctx], kwargs={})
+    p = Process(target = server.server, args=[ctx], kwargs={})
     p.start()
     time.sleep(10)
     try:
@@ -208,7 +209,7 @@ def test_task():
 def test_get_task():
     os.chdir("/")
     ctx = reload.context()
-    p = Process(target = reload.server, args=[ctx], kwargs={})
+    p = Process(target = server.server, args=[ctx], kwargs={})
     p.start()
     time.sleep(10)
     try:
@@ -230,7 +231,7 @@ def test_get_task():
 def test_delete_task(cleanup=True):
     os.chdir("/")
     ctx = reload.context()
-    p = Process(target = reload.server, args=[ctx], kwargs={})
+    p = Process(target = server.server, args=[ctx], kwargs={})
     p.start()
     time.sleep(10)
     try:

@@ -67,7 +67,9 @@ COPY ["HEAL-data-mapping/HEAL data mapping_finalv6.csv", "HEAL data mapping.csv"
 COPY --from=schema ["/tables.sql", "data/tables.sql"] 
 COPY --from=transform ["map-pipeline/target/scala-2.11/TIC preprocessing-assembly-0.2.0.jar", "TIC preprocessing-assembly.jar"]
 
-COPY ["reload.py", "reload.py"]
+COPY ["reload.py", "reload.py"]C
+COPY ["server.py", "server.py"]
+COPY ["application.py", "application.py"]
 
-ENTRYPOINT ["python3", "reload.py"]
+ENTRYPOINT ["python3", "application.py"]
 
