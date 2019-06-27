@@ -19,13 +19,19 @@ from flask import Flask, request
 import sherlock
 from sherlock import Lock
 import redis
-from rq import Queue
+from rq import Queue, Worker, Connection
+
 
 sherlock.configure(backend=sherlock.backends.REDIS, client=redis.StrictRedis(host=os.environ["REDIS_LOCK_HOST"], port=int(os.environ["REDIS_LOCK_PORT"]), db=int(os.environ["REDIS_LOCK_DB"])), expire=int(os.environ["REDIS_LOCK_EXPIRE"]), timeout=int(os.environ["REDIS_LOCK_TIMEOUT"]))
 
 G_LOCK="g_lock"
 
-q = Queue(connection=redis.StrictRedis(host=os.environ["REDIS_QUEUE_HOST"], port=int(os.environ["REDIS_QUEUE_PORT"]), db=int(os.environ["REDIS_QUEUE_DB"])))
+
+def redisQueue():
+    return redis.StrictRedis(host=os.environ["REDIS_QUEUE_HOST"], port=int(os.environ["REDIS_QUEUE_PORT"]), db=int(os.environ["REDIS_QUEUE_DB"]))
+
+
+q = Queue(connection=redisQueue())
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -81,18 +87,18 @@ def restoreDatabase(ctx, ts):
 
 
 def _restoreDatabase(ctx, ts):
-        if not clearDatabase(ctx):
-            return False
-        pgpass(ctx)
-        pgdumpfile = ctx["backupDir"] + "/" + ts
-        print("running psql")
-        cp = subprocess.run(["psql", "-d", ctx["dbname"], "-U", ctx["dbuser"], "-h", ctx["dbhost"], "-p", ctx["dbport"], "-f", pgdumpfile])
-        print("psql done")
-        if cp.returncode != 0:
-            sys.stderr.write("restore encountered an error: " + str(cp.returncode))
-            return False
-        else:
-            return True
+    if not clearDatabase(ctx):
+        return False
+    pgpass(ctx)
+    pgdumpfile = ctx["backupDir"] + "/" + ts
+    print("running psql")
+    cp = subprocess.run(["psql", "-d", ctx["dbname"], "-U", ctx["dbuser"], "-h", ctx["dbhost"], "-p", ctx["dbport"], "-f", pgdumpfile])
+    print("psql done")
+    if cp.returncode != 0:
+        sys.stderr.write("restore encountered an error: " + str(cp.returncode))
+        return False
+    else:
+        return True
             
 
 def dataDictionaryBackUpDirectory(ctx):
@@ -249,6 +255,11 @@ def context():
         "outputDirPath": "data",
     }
 
+
+def startWorker():
+    conn = redisQueue()
+    worker = Worker(Queue(connection=conn), connection=conn)
+    worker.work()
 
 def runPipeline(ctx):
     with Lock(G_LOCK):

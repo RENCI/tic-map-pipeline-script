@@ -19,7 +19,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    command: ["-s"] # , "-k", "test_delete_task"]
+    command: ["-s"] # , "-k", "test_restore_database_with_lock"]
     image: pmd-pipeline-reload-test:0.2.1
     environment:
       POSTGRES_DATABASE_NAME: $POSTGRES_DB
@@ -47,6 +47,7 @@ services:
     depends_on:
       - db
       - redcap
+      - redis
     
       
   db:
