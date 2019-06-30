@@ -34,6 +34,7 @@ def redisQueue():
 q = Queue(connection=redisQueue())
 
 logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 def pgpass(ctx):
     home = str(Path.home())
@@ -52,7 +53,7 @@ def _backUpDatabase(ctx, ts):
     pgdumpfile = ctx["backupDir"] + "/" + ts
     cp = subprocess.run(["pg_dump", "-O", "-d", ctx["dbname"], "-U", ctx["dbuser"], "-h", ctx["dbhost"], "-p", ctx["dbport"], "-f", pgdumpfile])
     if cp.returncode != 0:
-        sys.stderr.write("backup encountered an error: " + str(cp.returncode))
+        logger.error("backup encountered an error: " + str(cp.returncode))
         return False
     else:
         return True
@@ -67,17 +68,17 @@ def clearDatabase(ctx):
         cursor.execute("SELECT table_schema,table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_schema,table_name")
         rows = cursor.fetchall()
         for row in rows:
-            print ("dropping table: ", row[1])
+            logger.info ("dropping table: " + row[1])
             cursor.execute("drop table \"" + row[1] + "\" cascade")
-            print("table dropped")
-        print("closing cursor")
+            logger.info("table dropped")
+        logger.info("closing cursor")
         cursor.close()
-        print("closing connection")
+        logger.info("closing connection")
         conn.close()
-        print("database cleared")
+        logger.info("database cleared")
         return True
     except Exception as e:
-        sys.stderr.write("clear database encountered an error: " + str(e))
+        logger.error("clear database encountered an error: " + str(e))
         return False
         
 
@@ -91,11 +92,11 @@ def _restoreDatabase(ctx, ts):
         return False
     pgpass(ctx)
     pgdumpfile = ctx["backupDir"] + "/" + ts
-    print("running psql")
+    logger.info("restoring database")
     cp = subprocess.run(["psql", "-d", ctx["dbname"], "-U", ctx["dbuser"], "-h", ctx["dbhost"], "-p", ctx["dbport"], "-f", pgdumpfile])
-    print("psql done")
+    logger.info("database restored")
     if cp.returncode != 0:
-        sys.stderr.write("restore encountered an error: " + str(cp.returncode))
+        logger.error("restore encountered an error: " + str(cp.returncode))
         return False
     else:
         return True
@@ -112,7 +113,7 @@ def backUpDataDictionary(ctx):
     if not os.path.isfile(data_dictionary_backup_path):
         do_backup = True
     elif not filecmp.cmp(ctx["dataDictionaryInputFilePath"], data_dictionary_backup_path):
-        print(data_dictionary_backup_path, "is a file")
+        logger.info(data_dictionary_backup_path + " is a file")
         mtime = os.path.getmtime(data_dictionary_backup_path)
         shutil.copy(data_dictionary_backup_path, data_dictionary_backup_path+str(mtime))
         do_backup = True
@@ -126,7 +127,7 @@ def backUpDataDictionary(ctx):
 def download(ctx, headers, data, output):
     if os.path.isfile(output):
         os.remove(output)
-    print("downloading", output)
+    logger.info("downloading " + output)
     with open(output, "wb+") as f:
         r = requests.post(ctx["redcapURLBase"], data=data, headers=headers, stream=True)
         for chunk in r.iter_content(chunk_size=8192):
@@ -139,7 +140,7 @@ def createTables(ctx):
     cursor = conn.cursor()
     with open("data/tables.sql") as f:
         for line in f:
-            print("executing", line)
+            logger.info("executing " + line)
             cursor.execute(line)
     cursor.close()
     conn.commit()
@@ -155,7 +156,7 @@ def deleteTables(ctx):
     cursor = conn.cursor()
     tables = getTables(ctx)
     for f in tables:
-        print("deleting from table", f)
+        logger.info("deleting from table " + f)
         cursor.execute("DELETE FROM \"" + f + "\"")
     cursor.close()
     conn.commit()
@@ -166,10 +167,10 @@ def deleteTables(ctx):
 def insertData(ctx):
     tables = getTables(ctx)
     for f in tables:
-        print("inserting into table", f)
+        logger.info("inserting into table " + f)
         cp = subprocess.run(["csvsql", "--db", "postgresql://"+ctx["dbuser"]+":" + ctx["dbpass"] + "@" + ctx["dbhost"] +"/" + ctx["dbname"], "--insert", "--no-create", "-d", ",", "-e", "utf8", "--no-inference", "data/tables/" + f])
         if cp.returncode != 0:
-            print("error syncing database", cp.returncode)
+            logger.error("error syncing database", cp.returncode)
             return False
     return True
 
@@ -190,7 +191,7 @@ def etl(ctx):
                          "--mapping_input_file", ctx["mappingInputFilePath"], "--data_input_file", ctx["dataInputFilePath"],
                          "--data_dictionary_input_file", ctx["dataDictionaryInputFilePath"], "--output_dir", ctx["outputDirPath"]])
     if cp.returncode != 0:
-        sys.stderr.write("pipeline encountered an error: " + str(cp.returncode))
+        logger.error("pipeline encountered an error: " + str(cp.returncode))
         return False
     else:
         return True
@@ -286,13 +287,22 @@ def _runPipeline(ctx):
 def entrypoint(ctx, create_tables=None, insert_data=None, reload=None, one_off=None, schedule_run_time=None):
     with Lock(G_LOCK):
         if create_tables:
-            createTables(ctx)
+            try:
+                createTables(ctx)
+            except Exception as e:
+                logger.error("pipeline encountered an error when creating tables" + str(e))
 
         if insert_data:
-            insertData(ctx)
+            try:
+                insertData(ctx)
+            except Exception as e:
+                logger.error("pipeline encountered an error when inserting data" + str(e))
 
         if one_off:
-            _runPipeline(ctx)
+            try:
+                _runPipeline(ctx)
+            except Exception as e:
+                logger.error("pipeline encountered an error during one off run" + str(e))
             
     if reload:
         schedule.every().day.at(schedule_run_time).do(lambda: runPipeline(ctx))

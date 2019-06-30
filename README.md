@@ -20,6 +20,53 @@ download data dictionary in json format and store it under `test/redcap/metadata
 cd test
 docker-compose up --build -V
 ```
+## environment
+
+`POSTGRES_DATABASE_NAME` postgres database name
+
+`POSTGRES_USER` postgres user
+
+`POSTGRES_PASSWORD` postgres password
+
+`POSTGRES_PORT` postgres port    
+
+`POSTGRES_HOST` postgres host
+
+`REDCAP_APPLICATION_TOKEN` redcap application token
+
+`REDCAP_URL_BASE` redcap url base
+
+`POSTGRES_DUMP_PATH` postgres dump path
+
+`RELOAD_SCHEDULE` set to `1` to daily reload
+
+`SCHEDULE_RUN_TIME` schedule run time of reload format `HH:MM`
+
+`RELOAD_DATABASE` set to `1` to reload database on start up
+
+`SERVER` set to `1` to run a REST API
+
+`CREATE_TABLES` set to `1` to create tables in database from `data/tables.sql`
+
+`INSERT_DATA` set to `1` to insert data in database from `data/tables`
+
+`REDIS_QUEUE_HOST` redis host for task queue
+
+`REDIS_QUEUE_PORT` redis port for task queue
+
+`REDIS_QUEUE_DB` redis database for task queue
+
+`REDIS_LOCK_HOST` redis host for distributed locking
+
+`REDIS_LOCK_PORT` redis port for distributed locking
+
+`REDIS_LOCK_DB` redis database for distributed locking
+
+`REDIS_LOCK_EXPIRE` expire time for distributed locking in seconds
+
+`REDIS_LOCK_TIMEOUT` timeout for distributed locking in seconds
+
+
 ## api
 
 list all backups
