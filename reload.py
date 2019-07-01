@@ -170,7 +170,7 @@ def insertData(ctx):
         logger.info("inserting into table " + f)
         cp = subprocess.run(["csvsql", "--db", "postgresql://"+ctx["dbuser"]+":" + ctx["dbpass"] + "@" + ctx["dbhost"] +"/" + ctx["dbname"], "--insert", "--no-create", "-d", ",", "-e", "utf8", "--no-inference", "data/tables/" + f])
         if cp.returncode != 0:
-            logger.error("error syncing database", cp.returncode)
+            logger.error("error syncing database " + str(cp.returncode))
             return False
     return True
 
@@ -285,6 +285,8 @@ def _runPipeline(ctx):
 
 
 def entrypoint(ctx, create_tables=None, insert_data=None, reload=None, one_off=None, schedule_run_time=None):
+    logger.info("entrypoint create_tables="+str(create_tables)+" insert_data="+str(insert_data)+" reload="+str(reload)+" one_off="+str(one_off)+" schedule_run_time="+str(schedule_run_time))
+    
     with Lock(G_LOCK):
         if create_tables:
             try:
