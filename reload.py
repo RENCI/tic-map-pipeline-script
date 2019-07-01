@@ -36,6 +36,17 @@ q = Queue(connection=redisQueue())
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
+def waitForDatabaseToStart(ctx):
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    while True:
+        try:
+            s.connect((ctx["dbhost"], ctx["dbport"]))
+            s.close()
+            break
+        except socket.error as ex:
+            logger.info("waiting for database to start")
+            time.sleep(1)
+
 def pgpass(ctx):
     home = str(Path.home())
     with open(home + "/.pgpass", "w+") as f:
@@ -286,7 +297,9 @@ def _runPipeline(ctx):
 
 def entrypoint(ctx, create_tables=None, insert_data=None, reload=None, one_off=None, schedule_run_time=None):
     logger.info("entrypoint create_tables="+str(create_tables)+" insert_data="+str(insert_data)+" reload="+str(reload)+" one_off="+str(one_off)+" schedule_run_time="+str(schedule_run_time))
-    
+
+    waitForDatabaseToStart(ctx)
+
     with Lock(G_LOCK):
         if create_tables:
             try:
