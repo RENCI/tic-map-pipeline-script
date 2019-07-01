@@ -28,7 +28,7 @@ sherlock.configure(backend=sherlock.backends.REDIS, client=redis.StrictRedis(hos
 G_LOCK="g_lock"
 
 
-def redisQueue():
+def redisQueue(ctx):
     return redis.StrictRedis(host=os.environ["REDIS_QUEUE_HOST"], port=int(os.environ["REDIS_QUEUE_PORT"]), db=int(os.environ["REDIS_QUEUE_DB"]))
 
 
@@ -38,11 +38,11 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
-def waitForDatabaseToStart(ctx):
+def waitForDatabaseToStart(host, port):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     while True:
         try:
-            s.connect((ctx["dbhost"], ctx["dbport"]))
+            s.connect((host, port))
             s.close()
             break
         except socket.error as ex:
@@ -269,6 +269,14 @@ def context():
         "dataInputFilePath": "redcap_export.json",
         "dataDictionaryInputFilePath": "redcap_data_dictionary_export.json",
         "outputDirPath": "data",
+        "redisQueueHost": os.environ["REDIS_QUEUE_HOST"],
+        "redisQueuePort": os.environ["REDIS_QUEUE_PORT"],
+        "redisQueueDatabase": os.environ["REDIS_QUEUE_DB"],
+        "redisLockHost": os.environ["REDIS_LOCK_HOST"],
+        "redisLockPort": os.environ["REDIS_LOCK_PORT"],
+        "redisLockDatabase": os.environ["REDIS_LOCK_DB"],
+        "redisLockExpire": os.environ["REDIS_LOCK_EXPIRE"],
+        "redisLockTimeout": os.environ["REDIS_LOCK_TIMEOUT"]
     }
 
 
@@ -301,7 +309,9 @@ def _runPipeline(ctx):
 
 
 def entrypoint(ctx, create_tables=None, insert_data=None, reload=None, one_off=None, schedule_run_time=None):
-    waitForDatabaseToStart(ctx)
+    waitForDatabaseToStart(ctx["dbhost"], ctx["dbport"])
+    waitForDatabaseToStart(ctx["redisQueueHost"], ctx["redisQueuePort"])
+    waitForDatabaseToStart(ctx["redisLockHost"], ctx["redisLockPort"])
 
     with Lock(G_LOCK):
         if create_tables:
