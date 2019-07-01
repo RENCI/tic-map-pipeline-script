@@ -20,6 +20,7 @@ import sherlock
 from sherlock import Lock
 import redis
 from rq import Queue, Worker, Connection
+import socket
 
 
 sherlock.configure(backend=sherlock.backends.REDIS, client=redis.StrictRedis(host=os.environ["REDIS_LOCK_HOST"], port=int(os.environ["REDIS_LOCK_PORT"]), db=int(os.environ["REDIS_LOCK_DB"])), expire=int(os.environ["REDIS_LOCK_EXPIRE"]), timeout=int(os.environ["REDIS_LOCK_TIMEOUT"]))
@@ -36,6 +37,7 @@ q = Queue(connection=redisQueue())
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
+
 def waitForDatabaseToStart(ctx):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     while True:
@@ -47,6 +49,7 @@ def waitForDatabaseToStart(ctx):
             logger.info("waiting for database to start")
             time.sleep(1)
 
+            
 def pgpass(ctx):
     home = str(Path.home())
     with open(home + "/.pgpass", "w+") as f:
