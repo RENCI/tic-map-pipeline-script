@@ -28,7 +28,7 @@ sherlock.configure(backend=sherlock.backends.REDIS, client=redis.StrictRedis(hos
 G_LOCK="g_lock"
 
 
-def redisQueue(ctx):
+def redisQueue():
     return redis.StrictRedis(host=os.environ["REDIS_QUEUE_HOST"], port=int(os.environ["REDIS_QUEUE_PORT"]), db=int(os.environ["REDIS_QUEUE_DB"]))
 
 
@@ -309,9 +309,9 @@ def _runPipeline(ctx):
 
 
 def entrypoint(ctx, create_tables=None, insert_data=None, reload=None, one_off=None, schedule_run_time=None):
-    waitForDatabaseToStart(ctx["dbhost"], ctx["dbport"])
-    waitForDatabaseToStart(ctx["redisQueueHost"], ctx["redisQueuePort"])
-    waitForDatabaseToStart(ctx["redisLockHost"], ctx["redisLockPort"])
+    waitForDatabaseToStart(ctx["dbhost"], int(ctx["dbport"]))
+    waitForDatabaseToStart(ctx["redisQueueHost"], int(ctx["redisQueuePort"]))
+    waitForDatabaseToStart(ctx["redisLockHost"], int(ctx["redisLockPort"]))
 
     with Lock(G_LOCK):
         if create_tables:
