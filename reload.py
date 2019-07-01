@@ -165,6 +165,7 @@ def createTables(ctx):
 def getTables(ctx):
     return list(filter(lambda x : not x.startswith("."), os.listdir("data/tables")))
 
+
 def deleteTables(ctx):
     conn = connect(user=ctx["dbuser"], password=ctx["dbpass"], host=ctx["dbhost"], dbname=ctx["dbname"])
     cursor = conn.cursor()
@@ -276,6 +277,7 @@ def startWorker():
     worker = Worker(Queue(connection=conn), connection=conn)
     worker.work()
 
+
 def runPipeline(ctx):
     with Lock(G_LOCK):
         return _runPipeline(ctx)
@@ -299,8 +301,6 @@ def _runPipeline(ctx):
 
 
 def entrypoint(ctx, create_tables=None, insert_data=None, reload=None, one_off=None, schedule_run_time=None):
-    logger.info("entrypoint create_tables="+str(create_tables)+" insert_data="+str(insert_data)+" reload="+str(reload)+" one_off="+str(one_off)+" schedule_run_time="+str(schedule_run_time))
-
     waitForDatabaseToStart(ctx)
 
     with Lock(G_LOCK):
