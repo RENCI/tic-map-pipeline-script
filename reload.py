@@ -39,6 +39,7 @@ logger = logging.getLogger(__name__)
 
 
 def waitForDatabaseToStart(host, port):
+    logger.info("waiting for database to start host=" + host + " port=" + str(port))
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     while True:
         try:
@@ -46,10 +47,23 @@ def waitForDatabaseToStart(host, port):
             s.close()
             break
         except socket.error as ex:
-            logger.info("waiting for database to start")
+            logger.info("waiting for database to start host=" + host + " port=" + str(port))
             time.sleep(1)
-
+    logger.info("database started host=" + host + " port=" + str(port))
             
+def waitForRedisToStart(host, port):
+    logger.info("waiting for redis to start host=" + host + " port=" + str(port))
+    s = redis.StrictRedis(host, port)
+    while True:
+        try:
+            s.ping()
+            break
+        except socket.error as ex:
+            logger.info("waiting for redis to start host=" + host + " port=" + str(port))
+            time.sleep(1)
+    logger.info("redis started host=" + host + " port=" + str(port))
+
+
 def pgpass(ctx):
     home = str(Path.home())
     with open(home + "/.pgpass", "w+") as f:
@@ -310,9 +324,12 @@ def _runPipeline(ctx):
 
 def entrypoint(ctx, create_tables=None, insert_data=None, reload=None, one_off=None, schedule_run_time=None):
     waitForDatabaseToStart(ctx["dbhost"], int(ctx["dbport"]))
-    waitForDatabaseToStart(ctx["redisQueueHost"], int(ctx["redisQueuePort"]))
-    waitForDatabaseToStart(ctx["redisLockHost"], int(ctx["redisLockPort"]))
-
+    waitForRedisToStart(ctx["redisQueueHost"], int(ctx["redisQueuePort"]))
+    waitForRedisToStart(ctx["redisLockHost"], int(ctx["redisLockPort"]))
+    logger.info("create_tables="+str(create_tables))
+    logger.info("insert_data="+str(insert_data))
+    logger.info("one_off="+str(one_off))
+    logger.info("realod="+str(reload))
     with Lock(G_LOCK):
         if create_tables:
             try:
