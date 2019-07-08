@@ -17,6 +17,7 @@ from stat import S_ISREG, ST_MTIME, ST_MODE
 from flask import Flask, request
 import redis
 from rq import Queue
+import tempfile
 import reload
 
 q = Queue(connection=redis.StrictRedis(host=os.environ["REDIS_QUEUE_HOST"], port=int(os.environ["REDIS_QUEUE_PORT"]), db=int(os.environ["REDIS_QUEUE_DB"])))
@@ -59,6 +60,15 @@ def server(ctx):
             "one_off": True
         }, job_timeout=TASK_TIME)
         return json.dumps(pSync.id)
+            
+    @app.route("/table/<string:tablename>", methods=["POST"])
+    def table(tablename):
+        tf = tempfile.NamedTemporaryFile(delete=False)
+        tfname = tf.name
+        tf.close()
+        request.files["data"].save(tfname)
+        pTable = q.enqueue(reload.insertDataIntoTable, args=[ctx, tablename, tfname], job_timeout=TASK_TIME)
+        return return json.dumps(pTable.id)
             
     @app.route("/task", methods=["GET"])
     def task():

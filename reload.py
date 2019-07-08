@@ -196,11 +196,17 @@ def deleteTables(ctx):
 def insertData(ctx):
     tables = getTables(ctx)
     for f in tables:
-        logger.info("inserting into table " + f)
-        cp = subprocess.run(["csvsql", "--db", "postgresql://"+ctx["dbuser"]+":" + ctx["dbpass"] + "@" + ctx["dbhost"] +"/" + ctx["dbname"], "--insert", "--no-create", "-d", ",", "-e", "utf8", "--no-inference", "data/tables/" + f])
-        if cp.returncode != 0:
-            logger.error("error syncing database " + str(cp.returncode))
+        if not insertDataIntoTable(ctx, f, "data/tables/" + f):
             return False
+    return True
+
+
+def insertDataIntoTable(ctx, table, f):
+    logger.info("inserting into table " + table)
+    cp = subprocess.run(["csvsql", "--db", "postgresql://"+ctx["dbuser"]+":" + ctx["dbpass"] + "@" + ctx["dbhost"] +"/" + ctx["dbname"], "--insert", "--no-create", "-d", ",", "-e", "utf8", "--no-inference", "--tables", table, f])
+    if cp.returncode != 0:
+        logger.error("error inserting data into table " + table + " " + f + " " + str(cp.returncode))
+        return False
     return True
 
 
