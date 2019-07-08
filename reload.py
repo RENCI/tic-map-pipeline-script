@@ -218,13 +218,18 @@ def syncDatabase(ctx):
     return True
 
 
+def toKvp(dictionary):
+    return ",".join(str(k) + "=" + str(v) for k, v in dictionary.items())
+        
+    
 def etl(ctx):
     if os.path.isdir("data/tables"):
         for f in os.listdir("data/tables"):
             os.remove("data/tables/" + f)
     cp = subprocess.run(["spark-submit", "--driver-memory", "2g", "--executor-memory", "2g", "--master", "local[*]", "--class", "tic.Transform2", ctx["assemblyPath"],
                          "--mapping_input_file", ctx["mappingInputFilePath"], "--data_input_file", ctx["dataInputFilePath"],
-                         "--data_dictionary_input_file", ctx["dataDictionaryInputFilePath"], "--output_dir", ctx["outputDirPath"]])
+                         "--data_mapping_files", ctx["dataMappingFilesColumnPath"]
+                         "--data_dictionary_input_file", toKvp(ctx["dataDictionaryInputFilePath"]), "--output_dir", ctx["outputDirPath"]])
     if cp.returncode != 0:
         logger.error("pipeline encountered an error: " + str(cp.returncode))
         return False
@@ -288,6 +293,7 @@ def context():
         "mappingInputFilePath": "HEAL data mapping.csv",
         "dataInputFilePath": "redcap_export.json",
         "dataDictionaryInputFilePath": "redcap_data_dictionary_export.json",
+        "dataMappingFileColumnPath": json.load("data_mapping_files.json"),
         "outputDirPath": "data",
         "redisQueueHost": os.environ["REDIS_QUEUE_HOST"],
         "redisQueuePort": os.environ["REDIS_QUEUE_PORT"],
