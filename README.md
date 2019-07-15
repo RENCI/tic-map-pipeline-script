@@ -91,6 +91,16 @@ sync with source
 POST /sync
 ```
 
+insert data into table using csv
+```
+POST /table/<tablename>
+```
+
+get data from table using json
+```
+GET /table/<tablename>
+```
+
 list all tasks
 ```
 GET /task
