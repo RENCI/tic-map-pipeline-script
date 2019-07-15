@@ -18,11 +18,14 @@ from flask import Flask, request
 import redis
 from rq import Queue
 import tempfile
+import logging
 import reload
 
 q = Queue(connection=redis.StrictRedis(host=os.environ["REDIS_QUEUE_HOST"], port=int(os.environ["REDIS_QUEUE_PORT"]), db=int(os.environ["REDIS_QUEUE_DB"])))
 
 TASK_TIME=3600
+
+logger = logging.getLogger(__name__)
 
 def server(ctx):
     app = Flask(__name__)
@@ -61,14 +64,19 @@ def server(ctx):
         }, job_timeout=TASK_TIME)
         return json.dumps(pSync.id)
             
-    @app.route("/table/<string:tablename>", methods=["POST"])
+    @app.route("/table/<string:tablename>", methods=["GET", "POST"])
     def table(tablename):
-        tf = tempfile.NamedTemporaryFile(delete=False)
-        tfname = tf.name
-        tf.close()
-        request.files["data"].save(tfname)
-        pTable = q.enqueue(reload.insertDataIntoTable, args=[ctx, tablename, tfname], job_timeout=TASK_TIME)
-        return return json.dumps(pTable.id)
+        if request.method == "GET":
+            logger.info("get table")
+            return json.dumps(reload.readDataFromTable(ctx, tablename))
+        else:
+            logger.info("post table")
+            tf = tempfile.NamedTemporaryFile(delete=False)
+            tfname = tf.name
+            tf.close()
+            request.files["data"].save(tfname)
+            pTable = q.enqueue(reload.insertDataIntoTable, args=[ctx, tablename, tfname], job_timeout=TASK_TIME)
+            return json.dumps(pTable.id)
             
     @app.route("/task", methods=["GET"])
     def task():

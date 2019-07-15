@@ -38,6 +38,8 @@ docker-compose up --build -V
 
 `POSTGRES_DUMP_PATH` postgres dump path
 
+`AUXILIARY_PATH` path to auxiliary files to be joined with source data
+
 `RELOAD_SCHEDULE` set to `1` to daily reload
 
 `SCHEDULE_RUN_TIME` schedule run time of reload format `HH:MM`

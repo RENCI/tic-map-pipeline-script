@@ -89,7 +89,7 @@ def test_sync(cleanup = True):
         reload.createTables(ctx)
 
 
-def test_back_data_dictionary():
+def test_back_up_data_dictionary():
     os.chdir("/")
     ctx = reload.context()
     shutil.copy("redcap/metadata.json", ctx["dataDictionaryInputFilePath"])
@@ -99,7 +99,7 @@ def test_back_data_dictionary():
     shutil.rmtree(directory)
 
 
-def test_back_data_dictionary_makedirs_exists():
+def test_back_up_data_dictionary_makedirs_exists():
     os.chdir("/")
     ctx = reload.context()
     directory = reload.dataDictionaryBackUpDirectory(ctx)
@@ -238,7 +238,7 @@ def test_get_task():
         reload.clearTasks()
 
 
-def test_delete_task(cleanup=True):
+def test_delete_task():
     os.chdir("/")
     ctx = reload.context()
     p = Process(target = server.server, args=[ctx], kwargs={})
@@ -263,6 +263,17 @@ def test_delete_task(cleanup=True):
         reload.clearTasks()
 
 
+def wait_for_task_to_finish(taskid):
+    os.chdir("/")
+    ctx = reload.context()
+    resp = requests.get("http://localhost:5000/task/" + taskid)
+    print(resp.json())
+    while resp.json()["status"] in ["queued", "started"]:
+        time.sleep(1)
+        resp = requests.get("http://localhost:5000/task/" + taskid)
+        print(resp.json())
+
+
 def test_start_worker():
     os.chdir("/")
     ctx = reload.context()
@@ -275,3 +286,65 @@ def test_start_worker():
     assert len(list(workers)) == 1
     p.terminate()
 
+
+def do_test_auxiliary(aux1, exp):
+    os.chdir("/")
+    aux0 = os.environ.get("AUXILIARY_PATH")
+    os.environ["AUXILIARY_PATH"] = aux1
+    ctx = reload.context()
+    shutil.copy("redcap/record.json", ctx["dataInputFilePath"])
+    shutil.copy("redcap/metadata.json", ctx["dataDictionaryInputFilePath"])
+    assert reload.etl(ctx)
+    with open("/data/tables/ProposalFunding") as f:
+        i = f.readline().split(",").index("totalBudgetInt")
+        assert f.readline().split(",")[i] == exp
+    os.remove(ctx["dataInputFilePath"])
+    os.remove(ctx["dataDictionaryInputFilePath"])
+    shutil.rmtree("/data/tables")
+    if aux0 is None:
+        del os.environ["AUXILIARY_PATH"]
+    else:
+        os.environ["AUXILIARY_PATH"] = aux0
+
+
+def test_auxiliary1():
+    do_test_auxiliary("auxiliary1", "123")
+
+
+def test_auxiliary2():
+    do_test_auxiliary("auxiliary2", '""')
+
+
+def test_auxiliary3():
+    do_test_auxiliary("auxiliary3", '""')
+
+
+def test_table():
+    os.chdir("/")
+    ctx = reload.context()
+    pServer = Process(target = server.server, args=[ctx], kwargs={})
+    pServer.start()
+    time.sleep(10)
+    pWorker = Process(target = reload.startWorker)
+    pWorker.start()
+    time.sleep(10)
+    try:
+        print("get proposal")
+        resp = requests.get("http://localhost:5000/table/Proposal")
+        assert(len(resp.json()) == 0)
+        print("post proposal")
+        resp = requests.post("http://localhost:5000/table/Proposal", files={"data": open("/etlout/Proposal", "rb")})
+        assert resp.status_code == 200
+        taskid = resp.json()
+        print(taskid)
+        assert isinstance(taskid, str)
+        wait_for_task_to_finish(taskid)
+        print("get proposal")
+        resp = requests.get("http://localhost:5000/table/Proposal")
+        respjson = resp.json()
+        assert(len(respjson) == 1)
+    finally:
+        pWorker.terminate() 
+        pServer.terminate()
+        reload.clearTasks()
+    

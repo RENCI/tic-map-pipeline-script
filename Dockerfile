@@ -64,7 +64,6 @@ ENV INSERT_DATA=0
 ENV SERVER=0
 
 COPY ["HEAL-data-mapping/HEAL data mapping_finalv6.csv", "HEAL data mapping.csv"]
-COPY ["anticipated_budget.txt", "anticipated_budget.txt"]
 COPY --from=schema ["/tables.sql", "data/tables.sql"] 
 COPY --from=transform ["map-pipeline/target/scala-2.11/TIC preprocessing-assembly-0.2.0.jar", "TIC preprocessing-assembly.jar"]
 
