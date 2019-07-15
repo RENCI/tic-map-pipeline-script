@@ -91,12 +91,13 @@ sync with source
 POST /sync
 ```
 
-insert data into table using csv
+insert data into table in csv
 ```
 POST /table/<tablename>
 ```
+csv should have matching header as the table 
 
-get data from table using json
+get data from table in json
 ```
 GET /table/<tablename>
 ```
