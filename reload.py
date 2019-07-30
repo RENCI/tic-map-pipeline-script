@@ -88,6 +88,21 @@ def _backUpDatabase(ctx, ts):
         return True
 
             
+def deleteBackup(ctx, ts):
+    with Lock(G_LOCK):
+        return _deleteBackup(ctx, ts)
+
+
+def _deleteBackup(ctx, ts):
+    try:
+        dirpath = ctx["backupDir"]
+        os.remove(dirpath + "/" + ts)
+        return True
+    except Exception as e:
+        logger.error("delete backup error: " + str(e))
+        return False
+ 
+
 def clearDatabase(ctx):
     conn = connect(user=ctx["dbuser"], password=ctx["dbpass"], host=ctx["dbhost"], dbname=ctx["dbname"])
     conn.autocommit = True
@@ -98,7 +113,11 @@ def clearDatabase(ctx):
         rows = cursor.fetchall()
         for row in rows:
             logger.info ("dropping table: " + row[1])
-            cursor.execute("drop table \"" + row[1] + "\" cascade")
+            cursor.execute("select count(*) from \"" + row[1] + "\"")
+            logger.info(str(cursor.fetchone()[0]) + " rows")
+            query = "drop table \"" + row[1] + "\" cascade"
+            logger.info(query)
+            cursor.execute(query)
             logger.info("table dropped")
         logger.info("closing cursor")
         cursor.close()
@@ -205,6 +224,15 @@ def insertData(ctx):
 def insertDataIntoTable(ctx, table, f):
     logger.info("inserting into table " + table)
     cp = subprocess.run(["csvsql", "--db", "postgresql://"+ctx["dbuser"]+":" + ctx["dbpass"] + "@" + ctx["dbhost"] +"/" + ctx["dbname"], "--insert", "--no-create", "-d", ",", "-e", "utf8", "--no-inference", "--tables", table, f])
+    if cp.returncode != 0:
+        logger.error("error inserting data into table " + table + " " + f + " " + str(cp.returncode))
+        return False
+    return True
+
+
+def updateDataIntoTable(ctx, table, f):
+    logger.info("inserting into table " + table)
+    cp = subprocess.run(["csvsql", "--db", "postgresql://"+ctx["dbuser"]+":" + ctx["dbpass"] + "@" + ctx["dbhost"] +"/" + ctx["dbname"], "--overwrite", "--insert", "-d", ",", "-e", "utf8", "--no-inference", "--tables", table, f])
     if cp.returncode != 0:
         logger.error("error inserting data into table " + table + " " + f + " " + str(cp.returncode))
         return False

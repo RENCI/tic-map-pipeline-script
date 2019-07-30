@@ -19,8 +19,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    command: ["-s"] # , "-k", "test_table"]
-    image: pmd-pipeline-reload-test:0.2.2
+    command: ["-s"] # , "-k", "test_back_up_database"]
+    image: pmd-pipeline-reload-test:0.2.3
     environment:
       POSTGRES_DATABASE_NAME: $POSTGRES_DB
       POSTGRES_USER: $POSTGRES_USER
@@ -54,7 +54,7 @@ services:
     build:
       context: ./db/
       dockerfile: Dockerfile
-    image: pmd-pipeline-reload-test-db-mock:0.2.2
+    image: pmd-pipeline-reload-test-db-mock:0.2.3
     environment:
       POSTGRES_DB: $POSTGRES_DB
       POSTGRES_USER: $POSTGRES_USER
@@ -68,7 +68,7 @@ services:
     build:
       context: ./redcap/
       dockerfile: Dockerfile
-    image: pmd-pipeline-reload-test-redcap-mock:0.2.2
+    image: pmd-pipeline-reload-test-redcap-mock:0.2.3
     environment:
       REDCAP_APPLICATION_TOKEN: $REDCAP_APPLICATION_TOKEN
     expose:

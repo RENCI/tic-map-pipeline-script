@@ -81,6 +81,11 @@ create a new backup
 POST /backup
 ```
 
+delete a backup
+```
+DELETE /backup/<backup>
+```
+
 restore from a backup
 ```
 POST /restore/<backup>
@@ -116,3 +121,20 @@ delete task
 ```
 DELETE /task/<id>
 ```
+
+get table
+```
+GET /table/<table>
+```
+
+overwrite table
+```
+PUT /table/<table>
+```
+with file `data` in csv with header
+
+append table
+```
+POST /table/<table>
+```
+with file `data` in csv with header

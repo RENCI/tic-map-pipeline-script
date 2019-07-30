@@ -51,6 +51,11 @@ def server(ctx):
         ts = str(datetime.datetime.now())
         pBackup = q.enqueue(reload.backUpDatabase, args=[ctx, ts], job_timeout=TASK_TIME)
         return json.dumps(pBackup.id)
+
+    @app.route("/backup/<string:ts>", methods=["DELETE"])
+    def deleteBackup(ts):
+        pDeleteBackup = q.enqueue(reload.deleteBackup, args=[ctx, ts], job_timeout=TASK_TIME)        
+        return json.dumps(pDeleteBackup.id)
     
     @app.route("/restore/<string:ts>", methods=['POST'])
     def restore(ts):
@@ -64,11 +69,19 @@ def server(ctx):
         }, job_timeout=TASK_TIME)
         return json.dumps(pSync.id)
             
-    @app.route("/table/<string:tablename>", methods=["GET", "POST"])
+    @app.route("/table/<string:tablename>", methods=["GET", "POST", "PUT"])
     def table(tablename):
         if request.method == "GET":
             logger.info("get table")
             return json.dumps(reload.readDataFromTable(ctx, tablename))
+        elif request.method == "PUT":
+            logger.info("put table")
+            tf = tempfile.NamedTemporaryFile(delete=False)
+            tfname = tf.name
+            tf.close()
+            request.files["data"].save(tfname)
+            pTable = q.enqueue(reload.updateDataIntoTable, args=[ctx, tablename, tfname], job_timeout=TASK_TIME)
+            return json.dumps(pTable.id)            
         else:
             logger.info("post table")
             tf = tempfile.NamedTemporaryFile(delete=False)

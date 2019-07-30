@@ -1,4 +1,4 @@
-FROM pmd-pipeline-reload:0.2.2
+FROM pmd-pipeline-reload:0.2.3
 
 RUN pip3 install pytest hypothesis
 RUN mkdir test
@@ -12,6 +12,8 @@ RUN mkdir auxiliary
 COPY auxiliary1 auxiliary1
 COPY auxiliary2 auxiliary2
 COPY auxiliary3 auxiliary3
+
+RUN mkdir backup
 
 WORKDIR test
 

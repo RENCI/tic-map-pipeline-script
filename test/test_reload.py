@@ -1,7 +1,7 @@
 import reload
 import server
 import filecmp
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 import os
 import os.path
 import shutil
@@ -10,6 +10,7 @@ import datetime
 import requests
 import time
 from rq import Worker
+from psycopg2 import connect
 import pytest
 
 
@@ -67,9 +68,11 @@ def test_etl():
 def test_sync(cleanup = True):
     os.chdir("/")
     ctx = reload.context()
-    engine = create_engine("postgresql+psycopg2://" + ctx["dbuser"] + ":" + ctx["dbpass"] + "@" + ctx["dbhost"] + ":" + ctx["dbport"] + "/" + ctx["dbname"])
-    conn = engine.connect()
-    rs = conn.execute('''SELECT COUNT(*) FROM "Proposal"''').fetchall()
+    conn = connect(user=ctx["dbuser"], password=ctx["dbpass"], host=ctx["dbhost"], port=ctx["dbport"], dbname=ctx["dbname"])
+    conn.autocommit = True
+    cur = conn.cursor()
+    cur.execute('''SELECT COUNT(*) FROM "Proposal"''')
+    rs = cur.fetchall()
     assert len(rs) == 1
     for row in rs:
         assert row[0] == 0
@@ -77,7 +80,8 @@ def test_sync(cleanup = True):
     shutil.copytree("/etlout", "/data/tables")
     print("sync database")
     assert reload.syncDatabase(ctx)
-    rs = conn.execute('''SELECT COUNT(*) FROM "Proposal"''').fetchall()
+    cur.execute('''SELECT COUNT(*) FROM "Proposal"''')
+    rs = cur.fetchall()
     assert len(rs) == 1
     for row in rs:
         assert row[0] == 1
@@ -117,12 +121,27 @@ def test_back_up_database(cleanup=True):
     ctx = reload.context()
     ts = str(datetime.datetime.now())
     assert reload._backUpDatabase(ctx, ts)
+    assert(ts in os.listdir(ctx["backupDir"]))
     if cleanup:
         os.remove(ctx["backupDir"] + "/" + ts)
         reload.clearDatabase(ctx)
         reload.createTables(ctx)
     else:
         return ts
+
+
+def test_delete_back_up_database():
+    print("test_back_up_database")
+    test_sync(False)
+    os.chdir("/")
+    ctx = reload.context()
+    ts = str(datetime.datetime.now())
+    assert reload._backUpDatabase(ctx, ts)
+    assert reload._deleteBackup(ctx, ts)
+    assert(ts not in os.listdir(ctx["backupDir"]))
+
+    reload.clearDatabase(ctx)
+    reload.createTables(ctx)
 
 
 def test_restore_database():
@@ -145,6 +164,7 @@ def test_back_up_database_with_lock(cleanup=True):
     ctx = reload.context()
     ts = str(datetime.datetime.now())
     assert reload.backUpDatabase(ctx, ts)
+    assert(ts in os.listdir(ctx["backupDir"]))
     if cleanup:
         os.remove(ctx["backupDir"] + "/" + ts)
         reload.clearDatabase(ctx)
@@ -319,7 +339,7 @@ def test_auxiliary3():
     do_test_auxiliary("auxiliary3", '""')
 
 
-def test_table():
+def test_post_table():
     os.chdir("/")
     ctx = reload.context()
     pServer = Process(target = server.server, args=[ctx], kwargs={})
@@ -342,9 +362,67 @@ def test_table():
         print("get proposal")
         resp = requests.get("http://localhost:5000/table/Proposal")
         respjson = resp.json()
+        print(respjson)
+        assert(len(respjson) == 1)
+        print("post proposal")
+        resp = requests.post("http://localhost:5000/table/Proposal", files={"data": open("/etlout/Proposal", "rb")})
+        assert resp.status_code == 200
+        taskid = resp.json()
+        print(taskid)
+        assert isinstance(taskid, str)
+        wait_for_task_to_finish(taskid)
+        print("get proposal")
+        resp = requests.get("http://localhost:5000/table/Proposal")
+        respjson = resp.json()
+        print(respjson)
+        assert(len(respjson) == 2)
+    finally:
+        pWorker.terminate() 
+        pServer.terminate()
+        reload.clearTasks()
+        reload.clearDatabase(ctx)
+        reload.createTables(ctx)
+    
+def test_put_table():
+    os.chdir("/")
+    ctx = reload.context()
+    pServer = Process(target = server.server, args=[ctx], kwargs={})
+    pServer.start()
+    time.sleep(10)
+    pWorker = Process(target = reload.startWorker)
+    pWorker.start()
+    time.sleep(10)
+    try:
+        print("get proposal")
+        resp = requests.get("http://localhost:5000/table/Proposal")
+        assert(len(resp.json()) == 0)
+        print("put proposal")
+        resp = requests.put("http://localhost:5000/table/Proposal", files={"data": open("/etlout/Proposal", "rb")})
+        assert resp.status_code == 200
+        taskid = resp.json()
+        print(taskid)
+        assert isinstance(taskid, str)
+        wait_for_task_to_finish(taskid)
+        print("get proposal")
+        resp = requests.get("http://localhost:5000/table/Proposal")
+        respjson = resp.json()
+        print(respjson)
+        assert(len(respjson) == 1)
+        print("put proposal")
+        resp = requests.put("http://localhost:5000/table/Proposal", files={"data": open("/etlout/Proposal", "rb")})
+        assert resp.status_code == 200
+        taskid = resp.json()
+        print(taskid)
+        assert isinstance(taskid, str)
+        wait_for_task_to_finish(taskid)
+        print("get proposal")
+        resp = requests.get("http://localhost:5000/table/Proposal")
+        respjson = resp.json()
+        print(respjson)
         assert(len(respjson) == 1)
     finally:
         pWorker.terminate() 
         pServer.terminate()
         reload.clearTasks()
-    
+        reload.clearDatabase(ctx)
+        reload.createTables(ctx)
