@@ -1,0 +1,14 @@
+services:
+  - docker
+
+branches:
+  only:
+    - master
+
+before_install:
+  - docker build . -t pmd-pipeline-reload:0.2.3
+
+script:
+  - cd test
+  - docker-compose up --build --exit-code-from pipeline
+
