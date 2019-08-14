@@ -1,7 +1,6 @@
 import os
 import subprocess
 import sys
-from psycopg2.extras import DictCursor
 from psycopg2 import connect
 import schedule
 import time
@@ -22,7 +21,8 @@ from sherlock import Lock
 import redis
 from rq import Queue, Worker, Connection
 import socket
-
+import tempfile
+import csv
 
 sherlock.configure(backend=sherlock.backends.REDIS, client=redis.StrictRedis(host=os.environ["REDIS_LOCK_HOST"], port=int(os.environ["REDIS_LOCK_PORT"]), db=int(os.environ["REDIS_LOCK_DB"])), expire=int(os.environ["REDIS_LOCK_EXPIRE"]), timeout=int(os.environ["REDIS_LOCK_TIMEOUT"]))
 
@@ -216,38 +216,59 @@ def deleteTables(ctx):
 def insertData(ctx):
     tables = getTables(ctx)
     for f in tables:
-        if not insertDataIntoTable(ctx, f, "data/tables/" + f):
+        if not insertDataIntoTable(ctx, f, "data/tables/" + f, {}):
             return False
     return True
 
 
-def insertDataIntoTable(ctx, table, f):
+def runFile(func, f, kvp):
+    if len(kvp) == 0:
+        add_headers = add_data = []
+    else:
+        add_headers, add_data = map(list, zip(*kvp.items()))
+    outf = tempfile.NamedTemporaryFile("w+", newline="", delete=False)
+    try:
+        with outf:
+            writer = csv.writer(outf)
+            with open(f, newline="") as inf:
+                reader = csv.reader(inf)
+                headers = next(reader)
+                print(add_headers, add_data)
+                writer.writerow(headers + add_headers)
+                for row in reader:
+                    writer.writerow(row + add_data)
+
+        cp = func(outf.name)
+    finally:
+        os.unlink(outf.name)
+    return cp
+    
+def insertDataIntoTable(ctx, table, f, kvp):
     logger.info("inserting into table " + table)
-    cp = subprocess.run(["csvsql", "--db", "postgresql://"+ctx["dbuser"]+":" + ctx["dbpass"] + "@" + ctx["dbhost"] +"/" + ctx["dbname"], "--insert", "--no-create", "-d", ",", "-e", "utf8", "--no-inference", "--tables", table, f])
+    cp = runFile(lambda fn: subprocess.run(["csvsql", "--db", "postgresql://"+ctx["dbuser"]+":" + ctx["dbpass"] + "@" + ctx["dbhost"] +"/" + ctx["dbname"], "--insert", "--no-create", "-d", ",", "-e", "utf8", "--no-inference", "--tables", table, fn]), f, kvp)
     if cp.returncode != 0:
         logger.error("error inserting data into table " + table + " " + f + " " + str(cp.returncode))
         return False
     return True
 
-
-def updateDataIntoTable(ctx, table, f):
+def updateDataIntoTable(ctx, table, f, kvp):
     logger.info("inserting into table " + table)
-    cp = subprocess.run(["csvsql", "--db", "postgresql://"+ctx["dbuser"]+":" + ctx["dbpass"] + "@" + ctx["dbhost"] +"/" + ctx["dbname"], "--overwrite", "--insert", "-d", ",", "-e", "utf8", "--no-inference", "--tables", table, f])
+    cp = runFile(lambda fn: subprocess.run(["csvsql", "--db", "postgresql://"+ctx["dbuser"]+":" + ctx["dbpass"] + "@" + ctx["dbhost"] +"/" + ctx["dbname"], "--overwrite", "--insert", "-d", ",", "-e", "utf8", "--no-inference", "--tables", table, fn]), f, kvp)
     if cp.returncode != 0:
         logger.error("error inserting data into table " + table + " " + f + " " + str(cp.returncode))
         return False
     return True
-
 
 def readDataFromTable(ctx, table):
     logger.info("reading from table " + table)
     conn = connect(user=ctx["dbuser"], password=ctx["dbpass"], host=ctx["dbhost"], dbname=ctx["dbname"])
-    cursor = conn.cursor(cursor_factory=DictCursor)
+    cursor = conn.cursor()
     cursor.execute("SELECT * FROM \"" + table + "\"")
-    rows = cursor.fetchall() 
+    colnames = [c.name for c in cursor.description]
+    rows = cursor.fetchall()
     cursor.close()
     conn.close()
-    return [{colname:str(cell) for colname,cell in enumerate(row)} for row in rows]
+    return [{colname:str(cell) for colname,cell in zip(colnames, row)} for row in rows]
 
 
 def syncDatabase(ctx):

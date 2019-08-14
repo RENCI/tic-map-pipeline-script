@@ -80,7 +80,8 @@ def server(ctx):
             tfname = tf.name
             tf.close()
             request.files["data"].save(tfname)
-            pTable = q.enqueue(reload.updateDataIntoTable, args=[ctx, tablename, tfname], job_timeout=TASK_TIME)
+            kvp = json.loads(request.form["json"])
+            pTable = q.enqueue(reload.updateDataIntoTable, args=[ctx, tablename, tfname, kvp], job_timeout=TASK_TIME)
             return json.dumps(pTable.id)            
         else:
             logger.info("post table")
@@ -88,7 +89,8 @@ def server(ctx):
             tfname = tf.name
             tf.close()
             request.files["data"].save(tfname)
-            pTable = q.enqueue(reload.insertDataIntoTable, args=[ctx, tablename, tfname], job_timeout=TASK_TIME)
+            kvp = json.loads(request.form["json"])
+            pTable = q.enqueue(reload.insertDataIntoTable, args=[ctx, tablename, tfname, kvp], job_timeout=TASK_TIME)
             return json.dumps(pTable.id)
             
     @app.route("/task", methods=["GET"])

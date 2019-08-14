@@ -12,8 +12,51 @@ import time
 from rq import Worker
 from psycopg2 import connect
 import pytest
+import json
+import csv
+
+def countrows(src):
+    with open(src, newline="") as inf:
+        reader = csv.reader(inf)
+        headers = next(reader)
+        return sum(1 for row in reader)
+    
+def bag_equal(a, b):
+    t = list(b)
+    for elem in a:
+        if elem in t:
+            t.remove(elem)
+        else:
+            return False
+    return True
 
 
+def contains(a,b):
+    return all(item in a.items() for item in b.items())
+
+
+def bag_contains(a, b):
+    t = list(b)
+    for e in a:
+        found = None
+        for f in t:
+            if contains(e, f):
+                found = f
+                break
+        if found:
+            t.remove(found)
+        else:
+            return False
+    return True
+
+
+@pytest.fixture(scope="session", autouse=True)
+def pause():
+    yield
+    if os.environ.get("PAUSE") == "1":
+        input("Press Enter to continue...")
+
+        
 @pytest.fixture(scope='function', autouse=True)
 def test_log(request):
     print("Test '{}' STARTED".format(request.node.nodeid)) # Here logging is used, you can use whatever you want to use for logs
@@ -21,7 +64,7 @@ def test_log(request):
         print("Test '{}' COMPLETED".format(request.node.nodeid))
     request.addfinalizer(fin)
 
-
+    
 def test_downloadData():
     os.chdir("/")
     ctx = reload.context()
@@ -347,34 +390,37 @@ def test_post_table():
     time.sleep(10)
     pWorker = Process(target = reload.startWorker)
     pWorker.start()
+    src = "/etlout/Proposal"
     time.sleep(10)
     try:
         print("get proposal")
         resp = requests.get("http://localhost:5000/table/Proposal")
         assert(len(resp.json()) == 0)
         print("post proposal")
-        resp = requests.post("http://localhost:5000/table/Proposal", files={"data": open("/etlout/Proposal", "rb")})
+        resp = requests.post("http://localhost:5000/table/Proposal", files={
+            "json": (None, json.dumps({}), "application/json"),
+            "data": (src, open(src, "rb"), "application/octet-stream")
+        })
         assert resp.status_code == 200
         taskid = resp.json()
-        print(taskid)
         assert isinstance(taskid, str)
         wait_for_task_to_finish(taskid)
         print("get proposal")
         resp = requests.get("http://localhost:5000/table/Proposal")
         respjson = resp.json()
-        print(respjson)
         assert(len(respjson) == 1)
         print("post proposal")
-        resp = requests.post("http://localhost:5000/table/Proposal", files={"data": open("/etlout/Proposal", "rb")})
+        resp = requests.post("http://localhost:5000/table/Proposal", files={
+            "json": (None, json.dumps({}), "application/json"),
+            "data": (src, open(src, "rb"), "application/octet-stream")
+        })
         assert resp.status_code == 200
         taskid = resp.json()
-        print(taskid)
         assert isinstance(taskid, str)
         wait_for_task_to_finish(taskid)
         print("get proposal")
         resp = requests.get("http://localhost:5000/table/Proposal")
         respjson = resp.json()
-        print(respjson)
         assert(len(respjson) == 2)
     finally:
         pWorker.terminate() 
@@ -383,6 +429,7 @@ def test_post_table():
         reload.clearDatabase(ctx)
         reload.createTables(ctx)
     
+
 def test_put_table():
     os.chdir("/")
     ctx = reload.context()
@@ -391,34 +438,37 @@ def test_put_table():
     time.sleep(10)
     pWorker = Process(target = reload.startWorker)
     pWorker.start()
+    src = "/etlout/Proposal"
     time.sleep(10)
     try:
         print("get proposal")
         resp = requests.get("http://localhost:5000/table/Proposal")
         assert(len(resp.json()) == 0)
         print("put proposal")
-        resp = requests.put("http://localhost:5000/table/Proposal", files={"data": open("/etlout/Proposal", "rb")})
+        resp = requests.put("http://localhost:5000/table/Proposal", files={
+            "json": (None, json.dumps({}), "application/json"),
+            "data": (src, open(src, "rb"), "application/octet-stream")
+        })
         assert resp.status_code == 200
         taskid = resp.json()
-        print(taskid)
         assert isinstance(taskid, str)
         wait_for_task_to_finish(taskid)
         print("get proposal")
         resp = requests.get("http://localhost:5000/table/Proposal")
         respjson = resp.json()
-        print(respjson)
         assert(len(respjson) == 1)
         print("put proposal")
-        resp = requests.put("http://localhost:5000/table/Proposal", files={"data": open("/etlout/Proposal", "rb")})
+        resp = requests.put("http://localhost:5000/table/Proposal", files={
+            "json": (None, json.dumps({}), "application/json"),
+            "data": (src, open(src, "rb"), "application/octet-stream")
+        })
         assert resp.status_code == 200
         taskid = resp.json()
-        print(taskid)
         assert isinstance(taskid, str)
         wait_for_task_to_finish(taskid)
         print("get proposal")
         resp = requests.get("http://localhost:5000/table/Proposal")
         respjson = resp.json()
-        print(respjson)
         assert(len(respjson) == 1)
     finally:
         pWorker.terminate() 
@@ -426,3 +476,178 @@ def test_put_table():
         reload.clearTasks()
         reload.clearDatabase(ctx)
         reload.createTables(ctx)
+
+
+def test_post_table_kvp():
+    do_test_post_table_kvp("/add/ssd.csv")
+
+
+def test_post_table_kvp2():
+    do_test_post_table_kvp("/add/ssd2.csv")
+
+
+def do_test_post_table_kvp(src):
+    os.chdir("/")
+    ctx = reload.context()
+    pServer = Process(target = server.server, args=[ctx], kwargs={})
+    pServer.start()
+    time.sleep(10)
+    pWorker = Process(target = reload.startWorker)
+    pWorker.start()
+    time.sleep(10)
+    n = countrows(src)
+    try:
+        print("get siteInformation")
+        resp = requests.get("http://localhost:5000/table/SiteInformation")
+        assert(resp.json() == [])
+        print("post siteInformation")
+        resp = requests.post("http://localhost:5000/table/SiteInformation", files={
+            "json": (None, json.dumps({"ProposalID": "0"}), "application/json"),
+            "data": (src, open(src, "rb"), "application/octet-stream")
+        })
+        assert resp.status_code == 200
+        taskid = resp.json()
+        assert isinstance(taskid, str)
+        wait_for_task_to_finish(taskid)
+        print("get siteInformation")
+        resp = requests.get("http://localhost:5000/table/SiteInformation")
+        respjson = resp.json()
+        assert(bag_contains(respjson, [
+            {
+                "ProposalID": "0",
+                "siteNumber": str(i)
+            } for i in range(1, n+1)
+        ]))
+        print("post proposal")
+        resp = requests.post("http://localhost:5000/table/SiteInformation", files={
+            "json": (None, json.dumps({"ProposalID": "1"}), "application/json"),
+            "data": (src, open(src, "rb"), "application/octet-stream")
+        })
+        assert resp.status_code == 200
+        taskid = resp.json()
+        assert isinstance(taskid, str)
+        wait_for_task_to_finish(taskid)
+        print("get siteInformation")
+        resp = requests.get("http://localhost:5000/table/SiteInformation")
+        respjson = resp.json()
+        assert(bag_contains(respjson, [
+            {
+                "ProposalID": str(i),
+                "siteNumber": str(j)
+            } for i in [0, 1] for j in range(1, n+1)
+        ]))
+    finally:
+        pWorker.terminate() 
+        pServer.terminate()
+        reload.clearTasks()
+        reload.clearDatabase(ctx)
+        reload.createTables(ctx)
+
+
+def test_put_table_kvp():
+    do_test_put_table_kvp("/add/ssd.csv")
+                             
+
+def test_put_table_kvp2():
+    do_test_put_table_kvp("/add/ssd2.csv")
+                             
+
+def do_test_put_table_kvp(src):
+    os.chdir("/")
+    ctx = reload.context()
+    pServer = Process(target = server.server, args=[ctx], kwargs={})
+    pServer.start()
+    time.sleep(10)
+    pWorker = Process(target = reload.startWorker)
+    pWorker.start()
+    time.sleep(10)
+    n = countrows(src)
+    try:
+        print("get siteInformation")
+        resp = requests.get("http://localhost:5000/table/SiteInformation")
+        assert(resp.json() == [])
+        print("put siteInformation")
+        resp = requests.put("http://localhost:5000/table/SiteInformation", files={
+            "json": (None, json.dumps({"ProposalID": "0"}), "application/json"),
+            "data": (src, open(src, "rb"), "application/octet-stream")
+        })
+        assert resp.status_code == 200
+        taskid = resp.json()
+        assert isinstance(taskid, str)
+        wait_for_task_to_finish(taskid)
+        print("get siteInformation")
+        resp = requests.get("http://localhost:5000/table/SiteInformation")
+        respjson = resp.json()
+        assert(bag_contains(respjson, [
+            {
+                "ProposalID": "0",
+                "siteNumber": str(i)
+            } for i in range(1, n+1)
+        ]))
+        print("put siteInformation")
+        resp = requests.put("http://localhost:5000/table/SiteInformation", files={
+            "json": (None, json.dumps({"ProposalID": "0"}), "application/json"),
+            "data": (src, open(src, "rb"), "application/octet-stream")
+        })
+        assert resp.status_code == 200
+        taskid = resp.json()
+        assert isinstance(taskid, str)
+        wait_for_task_to_finish(taskid)
+        print("get siteInformation")
+        resp = requests.get("http://localhost:5000/table/SiteInformation")
+        respjson = resp.json()
+        assert(bag_contains(respjson, [
+            {
+                "ProposalID": "0",
+                "siteNumber": str(i)
+            } for i in range(1, n+1)
+        ]))
+    finally:
+        pWorker.terminate() 
+        pServer.terminate()
+        reload.clearTasks()
+        reload.clearDatabase(ctx)
+        reload.createTables(ctx)
+
+        
+def test_insert_table():
+    do_test_insert_table("/add/ssd.csv", {})
+
+    
+def test_insert_table2():
+    do_test_insert_table("/add/ssd2.csv", {})
+
+    
+def test_insert_table_kvp():
+    do_test_insert_table("/add/ssd.csv", {"ProposalID":"0"})
+
+    
+def test_insert_table_kvp2():
+    do_test_insert_table("/add/ssd2.csv", {"ProposalID":"0"})
+
+    
+def do_test_insert_table(src, kvp):
+    os.chdir("/")
+    ctx = reload.context()
+    n = countrows(src)
+    try:
+        reload.insertDataIntoTable(ctx, "SiteInformation", src, kvp)
+        rows = reload.readDataFromTable(ctx, "SiteInformation")
+        assert(bag_contains(rows, [
+            {
+                "siteNumber": str(i),
+                **kvp
+            } for i in range (1, n+1)
+        ]))
+        reload.insertDataIntoTable(ctx, "SiteInformation", src, kvp)
+        rows = reload.readDataFromTable(ctx, "SiteInformation")
+        assert(bag_contains(rows, [
+            {
+                "siteNumber": str(i),
+                **kvp
+            } for i in range (1, n+1)
+        ] * 2))
+    finally:
+        reload.clearDatabase(ctx)
+        reload.createTables(ctx)
+
