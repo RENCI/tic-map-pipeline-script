@@ -382,6 +382,40 @@ def test_auxiliary3():
     do_test_auxiliary("auxiliary3", '""')
 
 
+def do_test_filter(aux1, exp):
+    os.chdir("/")
+    aux0 = os.environ.get("FILTER_PATH")
+    os.environ["FILTER_PATH"] = aux1
+    ctx = reload.context()
+    shutil.copy("redcap/record.json", ctx["dataInputFilePath"])
+    shutil.copy("redcap/metadata.json", ctx["dataDictionaryInputFilePath"])
+    assert reload.etl(ctx)
+    with open("/data/tables/Proposal", newline="") as f:
+        reader = csv.reader(f)
+        headers = next(reader)
+        i = sum(1 for row in reader)
+        assert i == exp
+    os.remove(ctx["dataInputFilePath"])
+    os.remove(ctx["dataDictionaryInputFilePath"])
+    shutil.rmtree("/data/tables")
+    if aux0 is None:
+        del os.environ["FILTER_PATH"]
+    else:
+        os.environ["FILTER_PATH"] = aux0
+
+
+def test_filter1():
+    do_test_filter("filter1", 1)
+
+
+def test_filter2():
+    do_test_filter("filter2", 0)
+
+
+def test_filter3():
+    do_test_filter("filter3", 1)
+
+
 def test_post_table():
     os.chdir("/")
     ctx = reload.context()

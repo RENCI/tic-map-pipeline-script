@@ -19,8 +19,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    command: ["-s"] # , "-x", "-k", "test_insert_table"]
-    image: pmd-pipeline-reload-test:0.2.4
+    command: ["-s"] # , "-x", "-k", "test_filter3"]
+    image: pmd-pipeline-reload-test:0.2.5
     # stdin_open: true
     # tty: true
     environment:
@@ -33,6 +33,7 @@ services:
       REDCAP_URL_BASE: "http://redcap:5000/api/"
       POSTGRES_DUMP_PATH: $POSTGRES_DUMP_PATH
       AUXILIARY_PATH: /auxiliary
+      FILTER_PATH: /filter
       RELOAD_SCHEDULE: $RELOAD_SCHEDULE
       RELOAD_DATABASE: $RELOAD_DATABASE
       SCHEDULE_RUN_TIME: $SCHEDULE_RUN_TIME
@@ -57,7 +58,7 @@ services:
     build:
       context: ./db/
       dockerfile: Dockerfile
-    image: pmd-pipeline-reload-test-db-mock:0.2.4
+    image: pmd-pipeline-reload-test-db-mock:0.2.5
     environment:
       POSTGRES_DB: $POSTGRES_DB
       POSTGRES_USER: $POSTGRES_USER
@@ -71,7 +72,7 @@ services:
     build:
       context: ./redcap/
       dockerfile: Dockerfile
-    image: pmd-pipeline-reload-test-redcap-mock:0.2.4
+    image: pmd-pipeline-reload-test-redcap-mock:0.2.5
     environment:
       REDCAP_APPLICATION_TOKEN: $REDCAP_APPLICATION_TOKEN
     expose:

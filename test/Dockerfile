@@ -1,4 +1,4 @@
-FROM pmd-pipeline-reload:0.2.4
+FROM pmd-pipeline-reload:0.2.5
 
 RUN mkdir backup
 RUN pip3 install pytest hypothesis
@@ -10,9 +10,13 @@ COPY redcap/record.json redcap/record.json
 COPY redcap/metadata.json redcap/metadata.json
 COPY tables etlout
 RUN mkdir auxiliary
+RUN mkdir filter
 COPY auxiliary1 auxiliary1
 COPY auxiliary2 auxiliary2
 COPY auxiliary3 auxiliary3
+COPY filter1 filter1
+COPY filter2 filter2
+COPY filter3 filter3
 copy add add
 
 WORKDIR test

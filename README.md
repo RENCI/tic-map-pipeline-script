@@ -131,10 +131,10 @@ overwrite table
 ```
 PUT /table/<table>
 ```
-with file `data` in csv with header, and requestBody json for additional columns
+with file `data` in csv with header, and `json` for additional columns
 
 append table
 ```
 POST /table/<table>
 ```
-with file `data` in csv with header, and requestBody json for additional columns
+with file `data` in csv with header, and `json` for additional columns
