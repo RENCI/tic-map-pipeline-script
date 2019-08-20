@@ -19,6 +19,7 @@ import redis
 from rq import Queue
 import tempfile
 import logging
+import csv
 import reload
 
 q = Queue(connection=redis.StrictRedis(host=os.environ["REDIS_QUEUE_HOST"], port=int(os.environ["REDIS_QUEUE_PORT"]), db=int(os.environ["REDIS_QUEUE_DB"])))
@@ -26,6 +27,12 @@ q = Queue(connection=redis.StrictRedis(host=os.environ["REDIS_QUEUE_HOST"], port
 TASK_TIME=3600
 
 logger = logging.getLogger(__name__)
+
+def handleTableFunc(handler, ctx, tablename, tfname, kvp):
+    try:
+        handler(ctx, tablename, tfname, kvp)
+    finally:
+        os.unlink(tfname)
 
 def server(ctx):
     app = Flask(__name__)
@@ -68,7 +75,39 @@ def server(ctx):
             "one_off": True
         }, job_timeout=TASK_TIME)
         return json.dumps(pSync.id)
-            
+
+
+    def handleTable(handler, ctx, tablename):
+        tf = tempfile.NamedTemporaryFile(delete=False)
+        try:
+            tf.close()
+            tfname = tf.name
+            f = request.files["data"]
+            if request.form["content-type"] == "application/json":
+                j = json.load(f)
+                with open(tfname, "w", newline="") as tfi:
+                    writer = csv.writer(tfi)
+                    if len(j) == 0:
+                        writer.writerow([])
+                    else:
+                        keys = list(j[0].keys())
+                        writer.writerow(keys)
+                    for rowdict in j:
+                        writer.writerow([rowdict[key] for key in keys])
+            elif request.form["content-type"] == "text/csv":
+                f.save(tfname)
+            else:
+                logger.error("unsupported type")
+                raise RuntimeError("unsupported type")
+            kvp = json.loads(request.form["json"])
+        except Exception as e:
+            os.unlink(tfname)
+            logger.error("exception " + str(e))
+            raise
+                
+        pTable = q.enqueue(handleTableFunc, args=[handler, ctx, tablename, tfname, kvp], job_timeout=TASK_TIME)
+        return json.dumps(pTable.id)            
+
     @app.route("/table/<string:tablename>", methods=["GET", "POST", "PUT"])
     def table(tablename):
         if request.method == "GET":
@@ -76,22 +115,10 @@ def server(ctx):
             return json.dumps(reload.readDataFromTable(ctx, tablename))
         elif request.method == "PUT":
             logger.info("put table")
-            tf = tempfile.NamedTemporaryFile(delete=False)
-            tfname = tf.name
-            tf.close()
-            request.files["data"].save(tfname)
-            kvp = json.loads(request.form["json"])
-            pTable = q.enqueue(reload.updateDataIntoTable, args=[ctx, tablename, tfname, kvp], job_timeout=TASK_TIME)
-            return json.dumps(pTable.id)            
+            return handleTable(reload.updateDataIntoTable, ctx, tablename)
         else:
             logger.info("post table")
-            tf = tempfile.NamedTemporaryFile(delete=False)
-            tfname = tf.name
-            tf.close()
-            request.files["data"].save(tfname)
-            kvp = json.loads(request.form["json"])
-            pTable = q.enqueue(reload.insertDataIntoTable, args=[ctx, tablename, tfname, kvp], job_timeout=TASK_TIME)
-            return json.dumps(pTable.id)
+            return handleTable(reload.insertDataIntoTable, ctx, tablename)
             
     @app.route("/task", methods=["GET"])
     def task():

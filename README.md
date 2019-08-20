@@ -131,10 +131,10 @@ overwrite table
 ```
 PUT /table/<table>
 ```
-with file `data` in csv with header, and `json` for additional columns
+with file `data` in csv with header or json, and `json` for additional columns, and `content-type` for content type of the data
 
 append table
 ```
 POST /table/<table>
 ```
-with file `data` in csv with header, and `json` for additional columns
+with file `data` in csv with header or json, and `json` for additional columns, and `content-type` for content type of the data
