@@ -20,7 +20,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    command: ["-s"] # , "-x", "-k", "test_post_table"]
+    command: ["-s", "-x", "-k", "test_post_table"]
     image: pmd-pipeline-reload-test:0.2.6
     # stdin_open: true
     # tty: true
@@ -48,6 +48,7 @@ services:
       REDIS_LOCK_EXPIRE: 3600
       REDIS_LOCK_TIMEOUT: 3600
       PAUSE: $PAUSE
+      PRINT_REQUEST: $PRINT_REQUEST
     depends_on:
       - db
       - redcap

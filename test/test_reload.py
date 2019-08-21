@@ -499,8 +499,43 @@ def do_test_post_table_kvp_SiteInformation(verb, src, mime, content1, content2):
     do_test_post_table(verb, verb, src, mime, "SiteInformation", {"ProposalID": "0"}, {"ProposalID": "1"}, content1, content2)
 
 
+def format_prep_req(req):
+    """
+    At this point it is completely built and ready
+    to be fired; it is "prepared".
+
+    However pay attention at the formatting used in 
+    this function because it is programmed to be pretty 
+    printed and may differ from the actual request.
+    """
+    return '{0}\n{1}\n{2}\n\n{3}'.format(
+        '-----------START-----------',
+        req.method + ' ' + req.url,
+        '\n'.join('{0}: {1}'.format(k, v) for k, v in req.headers.items()),
+        req.body.decode("utf-8"),
+    )
+
+
 def do_post_table(verb1, tablename, kvp1, src, cnttype):
-    return verb1("http://localhost:5000/table/" + tablename, files={
+    if os.environ.get("PRINT_REQUEST") == 1:
+        if verb1 == requests.post:
+            verb = "POST"
+        elif verb1 == requests.put:
+            verb = "PUT"
+        else:
+            raise RuntimeException("unsupported method")
+        r = requests.Request(verb, "http://localhost:5000/table/" + tablename, files={
+            "json": (None, json.dumps(kvp1), "application/json"),
+            "data": (src, open(src, "rb"), "application/octet-stream"),
+            "content-type": (None, cnttype, "text/plain")
+        })
+
+        prer = r.prepare()
+        print(format_prep_req(prer))
+        s = requests.Session()
+        return s.send(prer)
+    else:
+        return verb1("http://localhost:5000/table/" + tablename, files={
             "json": (None, json.dumps(kvp1), "application/json"),
             "data": (src, open(src, "rb"), "application/octet-stream"),
             "content-type": (None, cnttype, "text/plain")
