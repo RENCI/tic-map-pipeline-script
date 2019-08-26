@@ -17,12 +17,12 @@ import csv
 
 def countrows(src, mime):
     if mime == "text/csv":
-        with open(src, newline="") as inf:
+        with open(src, newline="", encoding="utf-8") as inf:
             reader = csv.reader(inf)
             headers = next(reader)
             return sum(1 for row in reader)
     elif mime == "application/json":
-        with open(src) as inf:
+        with open(src, encoding="utf-8") as inf:
             return len(json.load(inf))
     
 def bag_equal(a, b):
@@ -597,6 +597,10 @@ def test_insert_table_kvp():
     
 def test_insert_table_kvp2():
     do_test_insert_table("/add/ssd2.csv", {"ProposalID":"0"})
+
+    
+def test_insert_table_non_ascii():
+    do_test_insert_table("/add/ssd_non_ascii.csv", {})
 
     
 def do_test_insert_table(src, kvp):

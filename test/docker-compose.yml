@@ -6,7 +6,7 @@ services:
     build:
       context: ./redis/
       dockerfile: Dockerfile
-    image: pmd-pipeline-reload-test-redis-mock:0.2.6
+    image: pmd-pipeline-reload-test-redis-mock:0.2.7
     restart: always
     environment: {}
     volumes:
@@ -20,8 +20,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    command: ["-s"] # , "-x", "-k", "test_post_table"]
-    image: pmd-pipeline-reload-test:0.2.6
+    command: ["-s", "-x", "-k", "test_insert_table_non_ascii"]
+    image: pmd-pipeline-reload-test:0.2.7
     # stdin_open: true
     # tty: true
     environment:
@@ -60,7 +60,7 @@ services:
     build:
       context: ./db/
       dockerfile: Dockerfile
-    image: pmd-pipeline-reload-test-db-mock:0.2.6
+    image: pmd-pipeline-reload-test-db-mock:0.2.7
     environment:
       POSTGRES_DB: $POSTGRES_DB
       POSTGRES_USER: $POSTGRES_USER
@@ -74,7 +74,7 @@ services:
     build:
       context: ./redcap/
       dockerfile: Dockerfile
-    image: pmd-pipeline-reload-test-redcap-mock:0.2.6
+    image: pmd-pipeline-reload-test-redcap-mock:0.2.7
     environment:
       REDCAP_APPLICATION_TOKEN: $REDCAP_APPLICATION_TOKEN
     expose:

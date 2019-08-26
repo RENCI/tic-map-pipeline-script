@@ -176,7 +176,7 @@ def download(ctx, headers, data, output):
     if os.path.isfile(output):
         os.remove(output)
     logger.info("downloading " + output)
-    with open(output, "wb+") as f:
+    with open(output, "wb+", encoding="utf-8") as f:
         r = requests.post(ctx["redcapURLBase"], data=data, headers=headers, stream=True)
         for chunk in r.iter_content(chunk_size=8192):
             if chunk:  # filter out keep-alive new chunks
@@ -186,7 +186,7 @@ def download(ctx, headers, data, output):
 def createTables(ctx):
     conn = connect(user=ctx["dbuser"], password=ctx["dbpass"], host=ctx["dbhost"], dbname=ctx["dbname"])
     cursor = conn.cursor()
-    with open("data/tables.sql") as f:
+    with open("data/tables.sql", encoding="utf-8") as f:
         for line in f:
             logger.info("executing " + line)
             cursor.execute(line)
@@ -226,11 +226,11 @@ def runFile(func, f, kvp):
         add_headers = add_data = []
     else:
         add_headers, add_data = map(list, zip(*kvp.items()))
-    outf = tempfile.NamedTemporaryFile("w+", newline="", delete=False)
+    outf = tempfile.NamedTemporaryFile("w+", newline="", encoding="utf-8", delete=False)
     try:
         with outf:
             writer = csv.writer(outf)
-            with open(f, newline="") as inf:
+            with open(f, newline="", encoding="utf-8") as inf:
                 reader = csv.reader(inf)
                 headers = next(reader)
                 print(add_headers, add_data)
