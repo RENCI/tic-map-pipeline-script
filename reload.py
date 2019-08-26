@@ -176,7 +176,7 @@ def download(ctx, headers, data, output):
     if os.path.isfile(output):
         os.remove(output)
     logger.info("downloading " + output)
-    with open(output, "wb+", encoding="utf-8") as f:
+    with open(output, "wb+") as f:
         r = requests.post(ctx["redcapURLBase"], data=data, headers=headers, stream=True)
         for chunk in r.iter_content(chunk_size=8192):
             if chunk:  # filter out keep-alive new chunks

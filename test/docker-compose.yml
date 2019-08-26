@@ -20,7 +20,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    command: ["-s", "-x", "-k", "test_insert_table_non_ascii"]
+    command: ["-s"] # , "-x", "-k", "test_insert_table_non_ascii"]
     image: pmd-pipeline-reload-test:0.2.7
     # stdin_open: true
     # tty: true
