@@ -85,7 +85,7 @@ def server(ctx):
             f = request.files["data"]
             if request.form["content-type"] == "application/json":
                 j = json.load(f)
-                with open(tfname, "w", newline="") as tfi:
+                with open(tfname, "w", newline="", encoding="utf-8") as tfi:
                     writer = csv.writer(tfi)
                     if len(j) == 0:
                         writer.writerow([])
