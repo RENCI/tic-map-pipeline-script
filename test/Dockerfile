@@ -1,7 +1,7 @@
-FROM pmd-pipeline-reload:0.2.8
+FROM pmd-pipeline-reload:0.2.9
 
 RUN mkdir backup
-RUN pip3 install pytest hypothesis
+RUN pip3 install pytest hypothesis pyyaml
 RUN mkdir test
 RUN mv reload.py server.py test
 

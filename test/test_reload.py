@@ -14,6 +14,7 @@ from psycopg2 import connect
 import pytest
 import json
 import csv
+import yaml
 
 def countrows(src, mime):
     if mime == "text/csv":
@@ -55,10 +56,20 @@ def bag_contains(a, b):
 
 
 @pytest.fixture(scope="session", autouse=True)
-def pause():
+def init_db():
+    os.chdir("/")
+    ctx = reload.context()
+    reload.createTables(ctx)
     yield
-    if os.environ.get("PAUSE") == "1":
-        input("Press Enter to continue...")
+
+@pytest.fixture(scope="session", autouse=True)
+def pause():
+    try:
+        yield
+    finally:
+        if os.environ.get("PAUSE") == "1":
+            input("Press Enter to continue...")
+
 
         
 @pytest.fixture(scope='function', autouse=True)
@@ -70,7 +81,6 @@ def test_log(request):
 
     
 def test_downloadData():
-    os.chdir("/")
     ctx = reload.context()
     reload.downloadData(ctx)
     assert filecmp.cmp(ctx["dataInputFilePath"], "redcap/record.json")
@@ -78,7 +88,7 @@ def test_downloadData():
 
     
 def test_downloadDataDictionary():
-    os.chdir("/")
+    
     ctx = reload.context()
     reload.downloadDataDictionary(ctx)
     assert filecmp.cmp(ctx["dataDictionaryInputFilePath"], "redcap/metadata.json")
@@ -86,7 +96,7 @@ def test_downloadDataDictionary():
 
 
 def test_clear_database():
-    os.chdir("/")
+    
     ctx = reload.context()
     reload.clearDatabase(ctx)
     engine = create_engine("postgresql+psycopg2://" + ctx["dbuser"] + ":" + ctx["dbpass"] + "@" + ctx["dbhost"] + ":" + ctx["dbport"] + "/" + ctx["dbname"])
@@ -99,7 +109,7 @@ def test_clear_database():
 
     
 def test_etl():
-    os.chdir("/")
+    
     ctx = reload.context()
     shutil.copy("redcap/record.json", ctx["dataInputFilePath"])
     shutil.copy("redcap/metadata.json", ctx["dataDictionaryInputFilePath"])
@@ -113,7 +123,7 @@ def test_etl():
 
 
 def test_sync(cleanup = True):
-    os.chdir("/")
+    
     ctx = reload.context()
     conn = connect(user=ctx["dbuser"], password=ctx["dbpass"], host=ctx["dbhost"], port=ctx["dbport"], dbname=ctx["dbname"])
     conn.autocommit = True
@@ -141,7 +151,7 @@ def test_sync(cleanup = True):
 
 
 def test_back_up_data_dictionary():
-    os.chdir("/")
+    
     ctx = reload.context()
     shutil.copy("redcap/metadata.json", ctx["dataDictionaryInputFilePath"])
     assert reload.backUpDataDictionary(ctx)
@@ -151,7 +161,7 @@ def test_back_up_data_dictionary():
 
 
 def test_back_up_data_dictionary_makedirs_exists():
-    os.chdir("/")
+    
     ctx = reload.context()
     directory = reload.dataDictionaryBackUpDirectory(ctx)
     os.makedirs(directory)
@@ -164,7 +174,7 @@ def test_back_up_data_dictionary_makedirs_exists():
 def test_back_up_database(cleanup=True):
     print("test_back_up_database")
     test_sync(False)
-    os.chdir("/")
+    
     ctx = reload.context()
     ts = str(datetime.datetime.now())
     assert reload._backUpDatabase(ctx, ts)
@@ -180,7 +190,7 @@ def test_back_up_database(cleanup=True):
 def test_delete_back_up_database():
     print("test_back_up_database")
     test_sync(False)
-    os.chdir("/")
+    
     ctx = reload.context()
     ts = str(datetime.datetime.now())
     assert reload._backUpDatabase(ctx, ts)
@@ -194,7 +204,7 @@ def test_delete_back_up_database():
 def test_restore_database():
     print("test_restore_database")
     ts = test_back_up_database(False)
-    os.chdir("/")
+    
     ctx = reload.context()
     reload.clearDatabase(ctx)
     reload.createTables(ctx)
@@ -207,7 +217,7 @@ def test_restore_database():
 def test_back_up_database_with_lock(cleanup=True):
     print("test_back_up_database")
     test_sync(False)
-    os.chdir("/")
+    
     ctx = reload.context()
     ts = str(datetime.datetime.now())
     assert reload.backUpDatabase(ctx, ts)
@@ -223,7 +233,7 @@ def test_back_up_database_with_lock(cleanup=True):
 def test_restore_database_with_lock():
     print("test_restore_database")
     ts = test_back_up_database(False)
-    os.chdir("/")
+    
     ctx = reload.context()
     reload.clearDatabase(ctx)
     reload.createTables(ctx)
@@ -234,7 +244,7 @@ def test_restore_database_with_lock():
 
 
 def test_sync_endpoint():
-    os.chdir("/")
+    
     ctx = reload.context()
     p = Process(target = server.server, args=[ctx], kwargs={})
     p.start()
@@ -250,7 +260,7 @@ def test_sync_endpoint():
 
     
 def test_back_up_endpoint():
-    os.chdir("/")
+    
     ctx = reload.context()
     p = Process(target = server.server, args=[ctx], kwargs={})
     p.start()
@@ -266,7 +276,7 @@ def test_back_up_endpoint():
 
 
 def test_task():
-    os.chdir("/")
+    
     ctx = reload.context()
     p = Process(target = server.server, args=[ctx], kwargs={})
     p.start()
@@ -284,7 +294,7 @@ def test_task():
 
 
 def test_get_task():
-    os.chdir("/")
+    
     ctx = reload.context()
     p = Process(target = server.server, args=[ctx], kwargs={})
     p.start()
@@ -306,7 +316,7 @@ def test_get_task():
 
 
 def test_delete_task():
-    os.chdir("/")
+    
     ctx = reload.context()
     p = Process(target = server.server, args=[ctx], kwargs={})
     p.start()
@@ -331,7 +341,7 @@ def test_delete_task():
 
 
 def wait_for_task_to_finish(taskid):
-    os.chdir("/")
+    
     ctx = reload.context()
     resp = requests.get("http://localhost:5000/task/" + taskid)
     print(resp.json())
@@ -342,7 +352,7 @@ def wait_for_task_to_finish(taskid):
 
 
 def test_start_worker():
-    os.chdir("/")
+    
     ctx = reload.context()
     p = Process(target = reload.startWorker)
     workers = Worker.all(connection=reload.redisQueue())
@@ -355,7 +365,7 @@ def test_start_worker():
 
 
 def do_test_auxiliary(aux1, exp):
-    os.chdir("/")
+    
     aux0 = os.environ.get("AUXILIARY_PATH")
     os.environ["AUXILIARY_PATH"] = aux1
     ctx = reload.context()
@@ -387,7 +397,7 @@ def test_auxiliary3():
 
 
 def do_test_filter(aux1, exp):
-    os.chdir("/")
+    
     aux0 = os.environ.get("FILTER_PATH")
     os.environ["FILTER_PATH"] = aux1
     ctx = reload.context()
@@ -543,7 +553,7 @@ def do_post_table(verb1, tablename, kvp1, src, cnttype):
 
 
 def do_test_post_table(verb1, verb2, src, cnttype, tablename, kvp1, kvp2, content1, content2):
-    os.chdir("/")
+    
     ctx = reload.context()
     pServer = Process(target = server.server, args=[ctx], kwargs={})
     pServer.start()
@@ -604,7 +614,7 @@ def test_insert_table_non_ascii():
 
     
 def do_test_insert_table(src, kvp):
-    os.chdir("/")
+    
     ctx = reload.context()
     n = countrows(src, "text/csv")
     try:
@@ -628,3 +638,91 @@ def do_test_insert_table(src, kvp):
         reload.clearDatabase(ctx)
         reload.createTables(ctx)
 
+
+def do_test_table(table_name, columns):
+    ctx = reload.context()
+    conn = connect(user=ctx["dbuser"], password=ctx["dbpass"], host=ctx["dbhost"], port=ctx["dbport"], dbname=ctx["dbname"])
+    conn.autocommit = True
+    cur = conn.cursor()
+    cur.execute('''SELECT * FROM "{0}"'''.format(table_name))
+    rs = cur.fetchall()
+    colnames = [desc[0] for desc in cur.description]
+    for column in columns:
+        assert column in colnames
+
+tables_yaml = '''
+- table: Sites
+  columns:
+  - siteId
+  - siteName
+
+- table: CTSAs
+  columns:
+  - ctsaId
+  - ctsaName
+  
+- table: StudyProfile
+  columns: 
+  - ProposalID
+  - network
+  - tic
+  - ShortTitle
+  - FullTitle
+  - type
+  - linkedStudies
+  - design
+  - isRandomized
+  - randomizationUnit
+  - randomizationFeature
+  - ascertainment
+  - observations
+  - isPilot
+  - phase
+  - isRegistry
+  - ehrDataTransfer
+  - isConsentRequired
+  - isEfic
+  - irbType
+  - regulatoryClassification
+  - clinicalTrialsGovId
+  - isDsmbDmcRequired
+  - initialParticipatingSiteCount
+  - enrollmentGoal
+  - initialProjectedEnrollmentDuration
+  - leadPIs
+  - awardeeSiteAcronym
+  - primaryFundingType
+  - isFundedPrimarilyByInfrastructure
+  - fundingSource
+  - fundingAwardDate
+  - isPreviouslyFunded
+  
+- table: StudySites
+  columns:
+  - ProposalID
+  - principalInvestigator
+  - siteNumber
+  - siteId
+  - ctsaId
+  - siteName
+  - dateRegPacketSent
+  - dateContractSent
+  - dateIrbSubmission
+  - dateIrbApproval
+  - dateContractExecution
+  - lpfv
+  - dateSiteActivated
+  - fpfv
+  - patientsConsentedCount
+  - patientsEnrolledCount
+  - patientsWithdrawnCount
+  - patientsExpectedCount
+  - queriesCount
+  - protocolDeviationsCount
+'''
+
+def test_tables():
+    tabs = yaml.load(tables_yaml)
+    for tab in tabs:
+        do_test_table(tab["table"], tab["columns"])
+    
