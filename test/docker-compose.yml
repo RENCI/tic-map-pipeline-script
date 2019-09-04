@@ -7,7 +7,6 @@ services:
       context: ./redis/
       dockerfile: Dockerfile
     image: pmd-pipeline-reload-test-redis-mock:0.2.10
-    restart: always
     environment: {}
     volumes:
       - ./redis/data/:/data
@@ -20,10 +19,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    command: ["-s", "-x"] # , "-k", "test_tables"]
+    command: ["-s"] # , "-x", "-k", "test_tables"]
     image: pmd-pipeline-reload-test:0.2.10
-    # stdin_open: true
-    # tty: true
     environment:
       POSTGRES_DATABASE_NAME: $POSTGRES_DB
       POSTGRES_USER: $POSTGRES_USER
@@ -53,8 +50,7 @@ services:
       - db
       - redcap
       - redis
-    
-      
+          
   db:
     container_name: pmd-pipeline-reload-test-db-mock
     build:

@@ -1,4 +1,4 @@
-# version 0.2.0
+# version 0.2.10
 # need to set the following env vars
 # REDCAP_APPLICATION_TOKEN
 # POSTGRES_USER

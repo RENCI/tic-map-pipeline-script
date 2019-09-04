@@ -650,79 +650,9 @@ def do_test_table(table_name, columns):
     for column in columns:
         assert column in colnames
 
-tables_yaml = '''
-- table: Sites
-  columns:
-  - siteId
-  - siteName
-
-- table: CTSAs
-  columns:
-  - ctsaId
-  - ctsaName
-  
-- table: StudyProfile
-  columns: 
-  - ProposalID
-  - network
-  - tic
-  - ShortTitle
-  - FullTitle
-  - type
-  - linkedStudies
-  - design
-  - isRandomized
-  - randomizationUnit
-  - randomizationFeature
-  - ascertainment
-  - observations
-  - isPilot
-  - phase
-  - isRegistry
-  - ehrDataTransfer
-  - isConsentRequired
-  - isEfic
-  - irbType
-  - regulatoryClassification
-  - clinicalTrialsGovId
-  - isDsmbDmcRequired
-  - initialParticipatingSiteCount
-  - enrollmentGoal
-  - initialProjectedEnrollmentDuration
-  - leadPIs
-  - awardeeSiteAcronym
-  - primaryFundingType
-  - isFundedPrimarilyByInfrastructure
-  - fundingSource
-  - fundingAwardDate
-  - isPreviouslyFunded
-  
-- table: StudySites
-  columns:
-  - ProposalID
-  - principalInvestigator
-  - siteNumber
-  - siteId
-  - ctsaId
-  - siteName
-  - dateRegPacketSent
-  - dateContractSent
-  - dateIrbSubmission
-  - dateIrbApproval
-  - dateContractExecution
-  - lpfv
-  - dateSiteActivated
-  - fpfv
-  - patientsConsentedCount
-  - patientsEnrolledCount
-  - patientsWithdrawnCount
-  - patientsExpectedCount
-  - queriesCount
-  - protocolDeviationsCount
-'''
-
 def test_tables():
-    tabs = yaml.load(tables_yaml)
-    for tab in tabs:
-        do_test_table(tab["table"], tab["columns"])
+    with open("tabs.yaml", "r") as f:
+        tabs = yaml.safe_load(f)
+        for tab in tabs:
+            do_test_table(tab["table"], tab["columns"])
     
