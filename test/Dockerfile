@@ -6,6 +6,7 @@ RUN mkdir test
 RUN mv reload.py server.py test
 
 COPY test_reload.py test/test_reload.py
+COPY tinputs.yaml test/tabs.yaml
 COPY redcap/record.json redcap/record.json
 COPY redcap/metadata.json redcap/metadata.json
 COPY tables etlout
