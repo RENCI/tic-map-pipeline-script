@@ -1,4 +1,4 @@
-FROM pmd-pipeline-reload:0.2.10
+FROM pmd-pipeline-reload:0.2.11
 
 RUN mkdir backup
 RUN pip3 install pytest hypothesis pyyaml

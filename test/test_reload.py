@@ -552,6 +552,32 @@ def do_post_table(verb1, tablename, kvp1, src, cnttype):
         })
 
 
+def do_post_table_column(verb1, tablename, column, kvp1, src, cnttype):
+    if os.environ.get("PRINT_REQUEST") == 1:
+        if verb1 == requests.post:
+            verb = "POST"
+        elif verb1 == requests.put:
+            verb = "PUT"
+        else:
+            raise RuntimeException("unsupported method")
+        r = requests.Request(verb, "http://localhost:5000/table/" + tablename + "/column/" + column, files={
+            "json": (None, json.dumps(kvp1), "application/json"),
+            "data": (src, open(src, "rb"), "application/octet-stream"),
+            "content-type": (None, cnttype, "text/plain")
+        })
+
+        prer = r.prepare()
+        print(format_prep_req(prer))
+        s = requests.Session()
+        return s.send(prer)
+    else:
+        return verb1("http://localhost:5000/table/" + tablename + "/column/" + column, files={
+            "json": (None, json.dumps(kvp1), "application/json"),
+            "data": (src, open(src, "rb"), "application/octet-stream"),
+            "content-type": (None, cnttype, "text/plain")
+        })
+
+
 def do_test_post_table(verb1, verb2, src, cnttype, tablename, kvp1, kvp2, content1, content2):
     
     ctx = reload.context()
@@ -577,6 +603,78 @@ def do_test_post_table(verb1, verb2, src, cnttype, tablename, kvp1, kvp2, conten
         assert(bag_contains(respjson, content1))
         print("post " + tablename)
         resp = do_post_table(verb2, tablename, kvp2, src, cnttype)
+        assert resp.status_code == 200
+        taskid = resp.json()
+        assert isinstance(taskid, str)
+        wait_for_task_to_finish(taskid)
+        print("get " + tablename)
+        resp = requests.get("http://localhost:5000/table/" + tablename)
+        respjson = resp.json()
+        assert(bag_contains(respjson, content2))
+    finally:
+        pWorker.terminate() 
+        pServer.terminate()
+        reload.clearTasks()
+        reload.clearDatabase(ctx)
+        reload.createTables(ctx)
+
+
+def test_post_table_column():
+    ctx = reload.context()
+    fn = "/tmp/ssd1.csv"
+    fn2 = "/tmp/ssd2.csv"
+    csv1 = [
+        [i, i] for i in range(10)
+    ]
+    csv2 = [
+        [i, i+1] for i in range(1, 11)
+    ]
+    n = len(csv1)
+    n2 = len(csv2)
+    write_csv(fn, ["ProposalID", "siteNumber"], csv1)
+    write_csv(fn2, ["ProposalID", "siteNumber"], csv2)
+    tablename = "SiteInformation"
+    column = "ProposalID"
+    kvp1 = kvp2 = {}
+    cnttype = "text/csv"
+    verb1 = verb2 = requests.post
+    content1 = [
+        {
+            "siteNumber": str(row[1]),
+            "ProposalID": str(row[0])
+        } for row in csv1
+    ]
+    content2 = [
+        {
+            "siteNumber": str(row[1]),
+            "ProposalID": str(row[0])
+        } for row in csv1 if row[0] not in list(map(lambda x: x[0], csv2))
+    ] + [
+        {
+            "siteNumber": str(row[1]),
+            "ProposalID": str(row[0])
+        } for row in csv2
+    ]
+
+    pServer = Process(target = server.server, args=[ctx], kwargs={})
+    pServer.start()
+    time.sleep(10)
+    pWorker = Process(target = reload.startWorker)
+    pWorker.start()
+    time.sleep(10)
+
+    try:
+        resp = do_post_table_column(verb1, tablename, column, kvp1, fn, cnttype)
+        assert resp.status_code == 200
+        taskid = resp.json()
+        assert isinstance(taskid, str)
+        wait_for_task_to_finish(taskid)
+        print("get " + tablename)
+        resp = requests.get("http://localhost:5000/table/" + tablename)
+        respjson = resp.json()
+        assert(bag_contains(respjson, content1))
+        print("post " + tablename)
+        resp = do_post_table_column(verb2, tablename, column, kvp2, fn2, cnttype)
         assert resp.status_code == 200
         taskid = resp.json()
         assert isinstance(taskid, str)
@@ -649,6 +747,92 @@ def do_test_table(table_name, columns):
     colnames = [desc[0] for desc in cur.description]
     for column in columns:
         assert column in colnames
+
+
+def write_csv(fn, headers, rows):
+    with open(fn, "w+") as outf:
+        writer = csv.writer(outf)
+        writer.writerow(headers)
+        for row in rows:
+            writer.writerow(row)
+
+    
+def test_update_table_column():
+    ctx = reload.context()
+    fn = "/tmp/ssd1.csv"
+    fn2 = "/tmp/ssd2.csv"
+    csv1 = [
+        [i, i] for i in range(10)
+    ]
+    csv2 = [
+        [i, i+1] for i in range(1, 11)
+    ]
+    n = len(csv1)
+    n2 = len(csv2)
+    write_csv(fn, ["ProposalID", "siteNumber"], csv1)
+    write_csv(fn2, ["ProposalID", "siteNumber"], csv2)
+
+    try:
+        reload._updateDataIntoTableColumn(ctx, "SiteInformation", "ProposalID", fn, {})
+        rows = reload.readDataFromTable(ctx, "SiteInformation")
+        assert(bag_contains(rows, [
+            {
+                "siteNumber": str(row[1]),
+                "ProposalID": str(row[0])
+            } for row in csv1
+        ]))
+        reload._updateDataIntoTableColumn(ctx, "SiteInformation", "ProposalID", fn2, {})
+        rows = reload.readDataFromTable(ctx, "SiteInformation")
+        assert(bag_contains(rows, [
+            {
+                "siteNumber": str(row[1]),
+                "ProposalID": str(row[0])
+            } for row in csv1 if row[0] not in list(map(lambda x: x[0], csv2))
+        ] + [
+            {
+                "siteNumber": str(row[1]),
+                "ProposalID": str(row[0])
+            } for row in csv2
+        ]))
+    finally:
+        reload.clearDatabase(ctx)
+        reload.createTables(ctx)
+        os.unlink(fn)
+        os.unlink(fn2)
+
+
+def test_get_column_data_type_twice():
+    ctx = reload.context()
+
+    dt = reload.getColumnDataType(ctx, "SiteInformation", "ProposalID")
+    assert dt == "bigint"
+
+    dt = reload.getColumnDataType(ctx, "SiteInformation", "ProposalID")
+    assert dt == "bigint"
+
+
+def test_get_column_data_type_twice2():
+    ctx = reload.context()
+    fn = "/tmp/ssd1.csv"
+    csv1 = [
+        [i, i] for i in range(10)
+    ]
+    n = len(csv1)
+    write_csv(fn, ["ProposalID", "siteNumber"], csv1)
+
+    try:
+        dt = reload.getColumnDataType(ctx, "SiteInformation", "ProposalID")
+        assert dt == "bigint"
+
+        reload._updateDataIntoTable(ctx, "SiteInformation", fn, {})
+        
+        dt = reload.getColumnDataType(ctx, "SiteInformation", "ProposalID")
+        assert dt == "bigint"
+    finally:
+        reload.clearDatabase(ctx)
+        reload.createTables(ctx)
+        os.unlink(fn)
+
 
 tables_yaml='''
 - table: Sites

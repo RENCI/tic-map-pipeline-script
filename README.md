@@ -138,3 +138,9 @@ append table
 POST /table/<table>
 ```
 with file `data` in csv with header in utf-8 encoding or json, and `json` for additional columns, and `content-type` for content type of the data
+
+update table
+```
+POST /table/<table>/<column>
+```
+with file `data` in csv with header in utf-8 encoding or json, and `json` for additional columns, and `content-type` for content type of the data

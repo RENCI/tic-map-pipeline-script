@@ -242,25 +242,116 @@ def runFile(func, f, kvp):
     finally:
         os.unlink(outf.name)
     return cp
-    
+
+
 def insertDataIntoTable(ctx, table, f, kvp):
+    with Lock(G_LOCK):
+        return _insertDataIntoTable(ctx, table, f, kvp)
+
+        
+def _insertDataIntoTable(ctx, table, f, kvp):
     logger.info("inserting into table " + table)
+    checkId(table)
     cp = runFile(lambda fn: subprocess.run(["csvsql", "--db", "postgresql://"+ctx["dbuser"]+":" + ctx["dbpass"] + "@" + ctx["dbhost"] +"/" + ctx["dbname"], "--insert", "--no-create", "-d", ",", "-e", "utf8", "--no-inference", "--tables", table, fn]), f, kvp)
     if cp.returncode != 0:
         logger.error("error inserting data into table " + table + " " + f + " " + str(cp.returncode))
         return False
     return True
 
+
 def updateDataIntoTable(ctx, table, f, kvp):
+    with Lock(G_LOCK):
+        return _updateDataIntoTable(ctx, table, f, kvp)
+
+    
+def _updateDataIntoTable(ctx, table, f, kvp):
     logger.info("inserting into table " + table)
-    cp = runFile(lambda fn: subprocess.run(["csvsql", "--db", "postgresql://"+ctx["dbuser"]+":" + ctx["dbpass"] + "@" + ctx["dbhost"] +"/" + ctx["dbname"], "--overwrite", "--insert", "-d", ",", "-e", "utf8", "--no-inference", "--tables", table, fn]), f, kvp)
-    if cp.returncode != 0:
-        logger.error("error inserting data into table " + table + " " + f + " " + str(cp.returncode))
-        return False
-    return True
+    checkId(table)
+
+    conn = connect(user=ctx["dbuser"], password=ctx["dbpass"], host=ctx["dbhost"], dbname=ctx["dbname"])
+    cursor = conn.cursor()
+    cursor.execute("delete from \"{0}\"".format(table))
+    cursor.close()
+    conn.commit()
+    conn.close()
+
+    return _insertDataIntoTable(ctx, table, f, kvp)
+
+
+def checkId(i):
+    if "\"" in i:
+        raise RuntimeError("invalid name {0}".format(i))
+
+    
+def getColumnDataType(ctx, table, column):
+    conn = connect(user=ctx["dbuser"], password=ctx["dbpass"], host=ctx["dbhost"], dbname=ctx["dbname"])
+    cursor = conn.cursor()
+    cursor.execute('''
+select data_type
+from information_schema.columns
+    where table_schema NOT IN ('information_schema', 'pg_catalog') and table_name=%s and column_name=%s
+order by table_schema, table_name
+    ''', (table, column))
+    rows = cursor.fetchall()
+    dt = rows[0][0]
+    cursor.close()
+    conn.close()
+    return dt
+
+
+def updateDataIntoTableColumn(ctx, table, column, f, kvp):
+    with Lock(G_LOCK):
+        return _updateDataIntoTableColumn(ctx, table, column, f, kvp)
+
+
+def _updateDataIntoTableColumn(ctx, table, column, f, kvp):
+    logger.info("inserting into table " + table + " with column " + column)
+    checkId(table)
+    checkId(column)
+    dt = getColumnDataType(ctx, table, column)
+    
+    updated = set()
+
+    if len(kvp) == 0:
+        add_headers = add_data = []
+    else:
+        add_headers, add_data = map(list, zip(*kvp.items()))
+
+    conn = connect(user=ctx["dbuser"], password=ctx["dbpass"], host=ctx["dbhost"], dbname=ctx["dbname"])
+    cursor = conn.cursor()
+    with open(f, newline="", encoding="utf-8") as inf:
+        reader = csv.reader(inf)
+        headers = next(reader)
+        headers2 = headers + add_headers
+        for header in headers2:
+            checkId(header)
+        index = headers2.index(column)
+        if dt == "integer":
+            fn = int
+        elif dt == "bigint":
+            fn = int
+        elif dt == "text":
+            fn = lambda x: x
+        elif dt == "character varying":
+            fn = lambda x: x
+        else:
+            raise RuntimeError("unsupported data type {0}".format(dt))
+        for row in reader:
+            row2 = row + add_data
+            val = fn(row2[index])
+            if val not in updated:
+                cursor.execute("delete from \"{0}\" where \"{1}\" = %s".format(table, column), (val,))
+                updated.add(val)                
+            
+    cursor.close()
+    conn.commit()
+    conn.close()
+    return _insertDataIntoTable(ctx, table, f, kvp)
+
 
 def readDataFromTable(ctx, table):
     logger.info("reading from table " + table)
+    checkId(table)
     conn = connect(user=ctx["dbuser"], password=ctx["dbpass"], host=ctx["dbhost"], dbname=ctx["dbname"])
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM \"" + table + "\"")

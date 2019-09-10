@@ -77,7 +77,7 @@ def server(ctx):
         return json.dumps(pSync.id)
 
 
-    def handleTable(handler, ctx, tablename):
+    def uploadFile():
         tf = tempfile.NamedTemporaryFile(delete=False)
         try:
             tf.close()
@@ -100,11 +100,14 @@ def server(ctx):
                 logger.error("unsupported type")
                 raise RuntimeError("unsupported type")
             kvp = json.loads(request.form["json"])
+            return tfname, kvp
         except Exception as e:
             os.unlink(tfname)
             logger.error("exception " + str(e))
             raise
-                
+
+    def handleTable(handler, ctx, tablename):
+        tfname, kvp = uploadFile()
         pTable = q.enqueue(handleTableFunc, args=[handler, ctx, tablename, tfname, kvp], job_timeout=TASK_TIME)
         return json.dumps(pTable.id)            
 
@@ -119,6 +122,18 @@ def server(ctx):
         else:
             logger.info("post table")
             return handleTable(reload.insertDataIntoTable, ctx, tablename)
+            
+    def handleTableColumn(handler, ctx, tablename, columnname):
+        tfname, kvp = uploadFile()
+                
+        pTable = q.enqueue(handleTableFunc, args=[handler, ctx, tablename, columnname, tfname, kvp], job_timeout=TASK_TIME)
+        return json.dumps(pTable.id)            
+
+    @app.route("/table/<string:tablename>/column/<string:columnname>", methods=["POST"])
+    def tableColumn(tablename, columnname):
+        if request.method == "POST":
+            logger.info("post incremental update table")
+            return handleTableColumn(reload.updateDataIntoTableColumn, ctx, tablename, columnname)
             
     @app.route("/task", methods=["GET"])
     def task():
