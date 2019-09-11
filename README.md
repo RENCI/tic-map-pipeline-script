@@ -38,7 +38,9 @@ docker-compose up --build -V
 
 `POSTGRES_DUMP_PATH` postgres dump path
 
-`AUXILIARY_PATH` path to auxiliary files to be joined with source data
+`AUXILIARY_PATH` path to auxiliary files to be left joined with source data (source data is left)
+
+`FILTER_PATH` path to filter files to be inner joined with source data
 
 `RELOAD_SCHEDULE` set to `1` to daily reload
 
@@ -68,7 +70,7 @@ docker-compose up --build -V
 
 `REDIS_LOCK_TIMEOUT` timeout for distributed locking in seconds
 
-
+`PAUSE` pause at the end of test must be run using the run command
 ## api
 
 list all backups
@@ -141,6 +143,6 @@ with file `data` in csv with header in utf-8 encoding or json, and `json` for ad
 
 update table
 ```
-POST /table/<table>/<column>
+POST /table/<table>/column/<column>
 ```
 with file `data` in csv with header in utf-8 encoding or json, and `json` for additional columns, and `content-type` for content type of the data
