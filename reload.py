@@ -158,17 +158,18 @@ def backUpDataDictionary(ctx):
     data_dictionary_backup_dir = dataDictionaryBackUpDirectory(ctx)
     data_dictionary_backup_path = data_dictionary_backup_dir + "/redcap_data_dictionary_export.json"
     do_backup = False
-    if not os.path.isfile(data_dictionary_backup_path):
-        do_backup = True
-    elif not filecmp.cmp(ctx["dataDictionaryInputFilePath"], data_dictionary_backup_path):
-        logger.info(data_dictionary_backup_path + " is a file")
-        mtime = os.path.getmtime(data_dictionary_backup_path)
-        shutil.copy(data_dictionary_backup_path, data_dictionary_backup_path+str(mtime))
-        do_backup = True
-    if do_backup:
-        if not os.path.exists(data_dictionary_backup_dir):
-            os.makedirs(data_dictionary_backup_dir)
-        shutil.copy(ctx["dataDictionaryInputFilePath"], data_dictionary_backup_path)
+    if os.path.isfile(ctx["dataDictionaryInputFilePath"]):
+        if not os.path.isfile(data_dictionary_backup_path):
+            do_backup = True
+        elif not filecmp.cmp(ctx["dataDictionaryInputFilePath"], data_dictionary_backup_path):
+            logger.info(data_dictionary_backup_path + " is a file")
+            mtime = os.path.getmtime(data_dictionary_backup_path)
+            shutil.copy(data_dictionary_backup_path, data_dictionary_backup_path+str(mtime))
+            do_backup = True
+        if do_backup:
+            if not os.path.exists(data_dictionary_backup_dir):
+                os.makedirs(data_dictionary_backup_dir)
+            shutil.copy(ctx["dataDictionaryInputFilePath"], data_dictionary_backup_path)
     return True
 
 

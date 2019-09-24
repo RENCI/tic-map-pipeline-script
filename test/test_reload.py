@@ -160,6 +160,15 @@ def test_back_up_data_dictionary():
     shutil.rmtree(directory)
 
 
+def test_back_up_data_dictionary_not_exists():
+    
+    ctx = reload.context()
+    assert reload.backUpDataDictionary(ctx)
+    directory = reload.dataDictionaryBackUpDirectory(ctx)
+    assert not os.path.exists(ctx["dataDictionaryInputFilePath"])
+    assert not os.path.exists(directory)
+
+
 def test_back_up_data_dictionary_makedirs_exists():
     
     ctx = reload.context()
