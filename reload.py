@@ -185,15 +185,22 @@ def download(ctx, headers, data, output):
 
                 
 def createTables(ctx):
+    with Lock(G_LOCK):
+        _createTables(ctx)
+
+
+def _createTables(ctx):
+    logger.info("create tables start")
     conn = connect(user=ctx["dbuser"], password=ctx["dbpass"], host=ctx["dbhost"], dbname=ctx["dbname"])
+    conn.autocommit = True
     cursor = conn.cursor()
     with open("data/tables.sql", encoding="utf-8") as f:
         for line in f:
             logger.info("executing " + line)
             cursor.execute(line)
     cursor.close()
-    conn.commit()
     conn.close()
+    logger.info("create tables end")
     return True
     
 
@@ -201,24 +208,33 @@ def getTables(ctx):
     return list(filter(lambda x : not x.startswith("."), os.listdir("data/tables")))
 
 
-def deleteTables(ctx):
+def _deleteTables(ctx):
+    logger.info("delete tables start")
     conn = connect(user=ctx["dbuser"], password=ctx["dbpass"], host=ctx["dbhost"], dbname=ctx["dbname"])
+    conn.autocommit = True
     cursor = conn.cursor()
     tables = getTables(ctx)
     for f in tables:
         logger.info("deleting from table " + f)
         cursor.execute("DELETE FROM \"" + f + "\"")
     cursor.close()
-    conn.commit()
     conn.close()
+    logger.info("delete tables end")
     return True
 
 
 def insertData(ctx):
+    with Lock(G_LOCK):
+        _insertData(ctx)
+
+
+def _insertData(ctx):
+    logger.info("insert data start")
     tables = getTables(ctx)
     for f in tables:
-        if not insertDataIntoTable(ctx, f, "data/tables/" + f, {}):
+        if not _insertDataIntoTable(ctx, f, "data/tables/" + f, {}):
             return False
+    logger.info("insert data end")
     return True
 
 
@@ -364,10 +380,17 @@ def readDataFromTable(ctx, table):
 
 
 def syncDatabase(ctx):
-    if not deleteTables(ctx):
+    with Lock(G_LOCK):
+        return _syncDatabase(ctx)
+
+
+def _syncDatabase(ctx):
+    logger.info("synchronizing database start")
+    if not _deleteTables(ctx):
         return False
-    if not insertData(ctx):
+    if not _insertData(ctx):
         return False
+    logger.info("synchronizing database end")
     return True
 
 
@@ -483,7 +506,7 @@ def _runPipeline(ctx):
         if not _backUpDatabase(ctx, ts):
             return False
         
-        return syncDatabase(ctx)
+        return _syncDatabase(ctx)
 
 
 def entrypoint(ctx, create_tables=None, insert_data=None, reload=None, one_off=None, schedule_run_time=None):
@@ -497,13 +520,13 @@ def entrypoint(ctx, create_tables=None, insert_data=None, reload=None, one_off=N
     with Lock(G_LOCK):
         if create_tables:
             try:
-                createTables(ctx)
+                _createTables(ctx)
             except Exception as e:
                 logger.error("pipeline encountered an error when creating tables" + str(e))
 
         if insert_data:
             try:
-                insertData(ctx)
+                _insertData(ctx)
             except Exception as e:
                 logger.error("pipeline encountered an error when inserting data" + str(e))
 

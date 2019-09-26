@@ -1,7 +1,7 @@
-FROM pmd-pipeline-reload:0.2.11
+FROM pmd-pipeline-reload:0.2.13
 
 RUN mkdir backup
-RUN pip3 install pytest hypothesis pyyaml
+RUN pip3 install pytest hypothesis pyyaml pytest-timeout
 RUN mkdir test
 RUN mv reload.py server.py test
 
@@ -22,3 +22,5 @@ copy add add
 WORKDIR test
 
 ENTRYPOINT ["pytest"]
+
+CMD ["--timeout", "600"]

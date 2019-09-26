@@ -15,6 +15,7 @@ import pytest
 import json
 import csv
 import yaml
+from contextlib import contextmanager
 
 def countrows(src, mime):
     if mime == "text/csv":
@@ -107,57 +108,119 @@ def test_clear_database():
     conn.close()
     reload.createTables(ctx)
 
+
+
+@contextmanager
+def copy_file(fromp, top):
+    shutil.copy(fromp, top)
+    try:
+        yield
+    finally:
+        os.remove(top)
+
+
+@contextmanager
+def copytree(fromp, top):
+    shutil.copytree(fromp, top)
+    try:
+        yield
+    finally:
+        shutil.rmtree(top)
+
+
+@contextmanager
+def datatables(nextvalue):
+    try:
+        ret = nextvalue()
+        yield ret
+    finally:
+        shutil.rmtree("/data/tables")
+
     
+@contextmanager
+def connection(ctx, autocommit=False):
+    conn = connect(user=ctx["dbuser"], password=ctx["dbpass"], host=ctx["dbhost"], port=ctx["dbport"], dbname=ctx["dbname"])
+    conn.autocommit = autocommit
+    try:
+        yield conn
+    finally:
+        conn.close()        
+
+
+@contextmanager
+def database(ctx, cleanup=True):
+    try:
+        yield
+    finally:
+        reload.clearDatabase(ctx)
+        reload.createTables(ctx)
+
+        
 def test_etl():
     
     ctx = reload.context()
-    shutil.copy("redcap/record.json", ctx["dataInputFilePath"])
-    shutil.copy("redcap/metadata.json", ctx["dataDictionaryInputFilePath"])
-    assert reload.etl(ctx)
-    assert os.path.isfile("/data/tables/Proposal")
-    with open("/data/tables/Proposal") as f:
-        assert sum(1 for _ in f) == 2
-    os.remove(ctx["dataInputFilePath"])
-    os.remove(ctx["dataDictionaryInputFilePath"])
-    shutil.rmtree("/data/tables")
+    with copy_file("redcap/record.json", ctx["dataInputFilePath"]):
+        with copy_file("redcap/metadata.json", ctx["dataDictionaryInputFilePath"]):
+            with datatables(lambda: reload.etl(ctx)) as ret:
+                assert ret
+                assert os.path.isfile("/data/tables/Proposal")
+                with open("/data/tables/Proposal") as f:
+                    assert sum(1 for _ in f) == 2
 
 
 def test_sync(cleanup = True):
     
     ctx = reload.context()
-    conn = connect(user=ctx["dbuser"], password=ctx["dbpass"], host=ctx["dbhost"], port=ctx["dbport"], dbname=ctx["dbname"])
-    conn.autocommit = True
-    cur = conn.cursor()
-    cur.execute('''SELECT COUNT(*) FROM "Proposal"''')
-    rs = cur.fetchall()
-    assert len(rs) == 1
-    for row in rs:
-        assert row[0] == 0
+    with database(ctx, cleanup=cleanup):
+        with connection(ctx, autocommit=True) as conn:
+            cur = conn.cursor()
+            cur.execute('''SELECT COUNT(*) FROM "Proposal"''')
+            rs = cur.fetchall()
+            assert len(rs) == 1
+            for row in rs:
+                assert row[0] == 0
+            
+            with copytree("/etlout", "/data/tables"):
+                print("sync database")
+                assert reload.syncDatabase(ctx)
+                cur.execute('''SELECT COUNT(*) FROM "Proposal"''')
+                rs = cur.fetchall()
+                assert len(rs) == 1
+                for row in rs:
+                    assert row[0] == 1
+                    print("database synced")
 
-    shutil.copytree("/etlout", "/data/tables")
-    print("sync database")
-    assert reload.syncDatabase(ctx)
-    cur.execute('''SELECT COUNT(*) FROM "Proposal"''')
-    rs = cur.fetchall()
-    assert len(rs) == 1
-    for row in rs:
-        assert row[0] == 1
-    print("database synced")
-    shutil.rmtree("/data/tables")
-    conn.close()
-    if cleanup:
-        reload.clearDatabase(ctx)
-        reload.createTables(ctx)
+
+def test_entrypoint():
+    
+    ctx = reload.context()
+    with database(ctx):
+        with connection(ctx, autocommit=True) as conn:
+            cur = conn.cursor()
+            cur.execute('''SELECT COUNT(*) FROM "Proposal"''')
+            rs = cur.fetchall()
+            assert len(rs) == 1
+            for row in rs:
+                assert row[0] == 0
+
+            ctx["reloaddb"]=False
+            with copy_file("redcap/record.json", ctx["dataInputFilePath"]):
+                with copy_file("redcap/metadata.json", ctx["dataDictionaryInputFilePath"]):
+                    with datatables(lambda: reload.entrypoint(ctx, one_off=True)):
+                        cur.execute('''SELECT COUNT(*) FROM "Proposal"''')
+                        rs = cur.fetchall()
+                        assert len(rs) == 1
+                        for row in rs:
+                            assert row[0] == 1
 
 
 def test_back_up_data_dictionary():
     
     ctx = reload.context()
-    shutil.copy("redcap/metadata.json", ctx["dataDictionaryInputFilePath"])
-    assert reload.backUpDataDictionary(ctx)
-    directory = reload.dataDictionaryBackUpDirectory(ctx)
-    os.remove(ctx["dataDictionaryInputFilePath"])
-    shutil.rmtree(directory)
+    with copy_file("redcap/metadata.json", ctx["dataDictionaryInputFilePath"]):
+        assert reload.backUpDataDictionary(ctx)
+        directory = reload.dataDictionaryBackUpDirectory(ctx)
+        shutil.rmtree(directory)
 
 
 def test_back_up_data_dictionary_not_exists():
@@ -174,26 +237,24 @@ def test_back_up_data_dictionary_makedirs_exists():
     ctx = reload.context()
     directory = reload.dataDictionaryBackUpDirectory(ctx)
     os.makedirs(directory)
-    shutil.copy("redcap/metadata.json", ctx["dataDictionaryInputFilePath"])
-    assert reload.backUpDataDictionary(ctx)
-    os.remove(ctx["dataDictionaryInputFilePath"])
-    shutil.rmtree(directory)
+    with copy_file("redcap/metadata.json", ctx["dataDictionaryInputFilePath"]):
+        assert reload.backUpDataDictionary(ctx)
+        shutil.rmtree(directory)
 
 
 def test_back_up_database(cleanup=True):
     print("test_back_up_database")
-    test_sync(False)
-    
     ctx = reload.context()
-    ts = str(datetime.datetime.now())
-    assert reload._backUpDatabase(ctx, ts)
-    assert(ts in os.listdir(ctx["backupDir"]))
-    if cleanup:
-        os.remove(ctx["backupDir"] + "/" + ts)
-        reload.clearDatabase(ctx)
-        reload.createTables(ctx)
-    else:
-        return ts
+    with database(ctx, cleanup=cleanup):
+        test_sync(False)
+    
+        ts = str(datetime.datetime.now())
+        assert reload._backUpDatabase(ctx, ts)
+        assert(ts in os.listdir(ctx["backupDir"]))
+        if cleanup:
+            os.remove(ctx["backupDir"] + "/" + ts)
+        else:
+            return ts
 
 
 def test_delete_back_up_database():
@@ -201,26 +262,23 @@ def test_delete_back_up_database():
     test_sync(False)
     
     ctx = reload.context()
-    ts = str(datetime.datetime.now())
-    assert reload._backUpDatabase(ctx, ts)
-    assert reload._deleteBackup(ctx, ts)
-    assert(ts not in os.listdir(ctx["backupDir"]))
-
-    reload.clearDatabase(ctx)
-    reload.createTables(ctx)
+    with database(ctx, cleanup=True):
+        ts = str(datetime.datetime.now())
+        assert reload._backUpDatabase(ctx, ts)
+        assert reload._deleteBackup(ctx, ts)
+        assert ts not in os.listdir(ctx["backupDir"])
 
 
 def test_restore_database():
     print("test_restore_database")
-    ts = test_back_up_database(False)
-    
+
     ctx = reload.context()
-    reload.clearDatabase(ctx)
-    reload.createTables(ctx)
-    assert reload._restoreDatabase(ctx, ts)
-    os.remove(ctx["backupDir"] + "/" + ts)
-    reload.clearDatabase(ctx)
-    reload.createTables(ctx)
+    with database(ctx, cleanup=True):
+        ts = test_back_up_database(False)
+    
+    with database(ctx, cleanup=True):
+        assert reload._restoreDatabase(ctx, ts)
+        os.remove(ctx["backupDir"] + "/" + ts)
 
 
 def test_back_up_database_with_lock(cleanup=True):
@@ -228,28 +286,26 @@ def test_back_up_database_with_lock(cleanup=True):
     test_sync(False)
     
     ctx = reload.context()
-    ts = str(datetime.datetime.now())
-    assert reload.backUpDatabase(ctx, ts)
-    assert(ts in os.listdir(ctx["backupDir"]))
-    if cleanup:
-        os.remove(ctx["backupDir"] + "/" + ts)
-        reload.clearDatabase(ctx)
-        reload.createTables(ctx)
-    else:
-        return ts
+    with database(ctx, cleanup=cleanup):
+        ts = str(datetime.datetime.now())
+        assert reload.backUpDatabase(ctx, ts)
+        assert(ts in os.listdir(ctx["backupDir"]))
+        if cleanup:
+            os.remove(ctx["backupDir"] + "/" + ts)
+        else:
+            return ts
 
 
 def test_restore_database_with_lock():
     print("test_restore_database")
-    ts = test_back_up_database(False)
-    
+
     ctx = reload.context()
-    reload.clearDatabase(ctx)
-    reload.createTables(ctx)
-    assert reload.restoreDatabase(ctx, ts)
-    os.remove(ctx["backupDir"] + "/" + ts)
-    reload.clearDatabase(ctx)
-    reload.createTables(ctx)
+    with database(ctx, cleanup=True):
+        ts = test_back_up_database(False)
+    
+    with database(ctx, cleanup=True):
+        assert reload.restoreDatabase(ctx, ts)
+        os.remove(ctx["backupDir"] + "/" + ts)
 
 
 def test_sync_endpoint():

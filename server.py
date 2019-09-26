@@ -28,9 +28,9 @@ TASK_TIME=3600
 
 logger = logging.getLogger(__name__)
 
-def handleTableFunc(handler, ctx, tablename, tfname, kvp):
+def handleTableFunc(handler, args, tfname):
     try:
-        handler(ctx, tablename, tfname, kvp)
+        handler(*args)
     finally:
         os.unlink(tfname)
 
@@ -108,7 +108,7 @@ def server(ctx):
 
     def handleTable(handler, ctx, tablename):
         tfname, kvp = uploadFile()
-        pTable = q.enqueue(handleTableFunc, args=[handler, ctx, tablename, tfname, kvp], job_timeout=TASK_TIME)
+        pTable = q.enqueue(handleTableFunc, args=[handler, [ctx, tablename, tfname, kvp], tfname], job_timeout=TASK_TIME)
         return json.dumps(pTable.id)            
 
     @app.route("/table/<string:tablename>", methods=["GET", "POST", "PUT"])
@@ -126,7 +126,7 @@ def server(ctx):
     def handleTableColumn(handler, ctx, tablename, columnname):
         tfname, kvp = uploadFile()
                 
-        pTable = q.enqueue(handleTableFunc, args=[handler, ctx, tablename, columnname, tfname, kvp], job_timeout=TASK_TIME)
+        pTable = q.enqueue(handleTableFunc, args=[handler, [ctx, tablename, columnname, tfname, kvp], tfname], job_timeout=TASK_TIME)
         return json.dumps(pTable.id)            
 
     @app.route("/table/<string:tablename>/column/<string:columnname>", methods=["POST"])
