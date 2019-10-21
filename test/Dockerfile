@@ -1,4 +1,4 @@
-FROM pmd-pipeline-reload:0.2.14
+FROM pmd-pipeline-reload:0.2.15
 
 RUN mkdir backup
 RUN pip3 install pytest hypothesis pyyaml pytest-timeout
