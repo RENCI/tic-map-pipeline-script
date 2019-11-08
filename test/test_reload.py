@@ -60,7 +60,7 @@ def bag_contains(a, b):
 def init_db():
     os.chdir("/")
     ctx = reload.context()
-    reload.createTables(ctx)
+    reload._createTables(ctx)
     yield
 
 @pytest.fixture(scope="session", autouse=True)
@@ -76,9 +76,10 @@ def pause():
 @pytest.fixture(scope='function', autouse=True)
 def test_log(request):
     print("Test '{}' STARTED".format(request.node.nodeid)) # Here logging is used, you can use whatever you want to use for logs
-    def fin():
+    try:
+        yield
+    finally:
         print("Test '{}' COMPLETED".format(request.node.nodeid))
-    request.addfinalizer(fin)
 
     
 def test_downloadData():
