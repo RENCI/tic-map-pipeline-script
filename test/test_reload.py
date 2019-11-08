@@ -352,8 +352,13 @@ def test_task():
         assert len(resp0.json()) == 0
         resp = requests.post("http://localhost:5000/backup")
         resp2 = requests.get("http://localhost:5000/task")
-        assert len(resp2.json()) == 1
-        assert resp.json() in resp2.json()
+        assert "queued" in resp2.json()
+        assert len(resp2.json()["queued"]) == 1
+        for status in ["started", "finished", "failed", "deferred"]:
+            assert status in resp2.json()
+            for category in ["job_ids", "expired_job_ids"]:
+                assert category in resp2.json()[status]
+                assert len(resp2.json()[status][category]) == 0
     finally:
         p.terminate()
         reload.clearTasks()
