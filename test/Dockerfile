@@ -1,9 +1,9 @@
-FROM pmd-pipeline-reload:0.2.16
+FROM pmd-pipeline-reload:0.2.17
 
 RUN mkdir backup
 RUN pip3 install pytest hypothesis pyyaml pytest-timeout
 RUN mkdir test
-RUN mv reload.py server.py test
+RUN mv reload.py server.py utils.py test
 
 COPY test_reload.py test/test_reload.py
 COPY redcap/record.json redcap/record.json

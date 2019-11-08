@@ -23,6 +23,7 @@ from rq import Queue, Worker, Connection
 import socket
 import tempfile
 import csv
+import utils
 
 sherlock.configure(backend=sherlock.backends.REDIS, client=redis.StrictRedis(host=os.environ["REDIS_LOCK_HOST"], port=int(os.environ["REDIS_LOCK_PORT"]), db=int(os.environ["REDIS_LOCK_DB"])), expire=int(os.environ["REDIS_LOCK_EXPIRE"]), timeout=int(os.environ["REDIS_LOCK_TIMEOUT"]))
 
@@ -35,8 +36,7 @@ def redisQueue():
 
 q = Queue(connection=redisQueue())
 
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
+logger = utils.getLogger(__name__)
 
 
 def waitForDatabaseToStart(host, port):

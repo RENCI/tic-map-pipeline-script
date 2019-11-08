@@ -21,12 +21,13 @@ import tempfile
 import logging
 import csv
 import reload
+import utils
 
 q = Queue(connection=redis.StrictRedis(host=os.environ["REDIS_QUEUE_HOST"], port=int(os.environ["REDIS_QUEUE_PORT"]), db=int(os.environ["REDIS_QUEUE_DB"])))
 
 TASK_TIME=3600
 
-logger = logging.getLogger(__name__)
+logger = utils.getLogger(__name__)
 
 def handleTableFunc(handler, args, tfname):
     try:
@@ -155,7 +156,8 @@ def server(ctx):
             "enqueued_at": str(job.enqueued_at),
             "started_at": str(job.started_at),
             "ended_at": str(job.ended_at),
-            "description": job.description
+            "description": job.description,
+            "result": str(job.result)
         })
     
     def deleteTaskId(taskid):

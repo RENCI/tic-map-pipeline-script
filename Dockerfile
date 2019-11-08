@@ -37,13 +37,13 @@ FROM ubuntu:18.04
 
 RUN mkdir data
 
-RUN apt-get update && apt-get install -y wget gnupg
+RUN apt-get update && apt-get install -y wget gnupg git
 
 RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ bionic-pgdg main" | tee -a /etc/apt/sources.list.d/pgdg.list
 
 RUN wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
 
-RUN apt-get update && apt-get install -y python3-pip wget openjdk-8-jdk postgresql-client-11 git
+RUN apt-get update && apt-get install -y python3-pip wget openjdk-8-jdk postgresql-client-11
 RUN pip3 install schedule pandas psycopg2-binary csvkit requests flask redis rq
 RUN pip3 install git+https://github.com/vaidik/sherlock.git@77742ba91a24f75ee62e1895809901bde018654f
 
@@ -67,11 +67,10 @@ COPY ["HEAL-data-mapping/HEAL data mapping_finalv6.csv", "HEAL data mapping.csv"
 COPY --from=schema ["/tables.sql", "data/tables.sql"] 
 COPY --from=transform ["map-pipeline/target/scala-2.11/TIC preprocessing-assembly-0.2.0.jar", "TIC preprocessing-assembly.jar"]
 
-RUN echo '{"anticipated_budget": "anticipated_budget.txt"}' > data_mapping_files.json
-
 COPY ["reload.py", "reload.py"]C
 COPY ["server.py", "server.py"]
 COPY ["application.py", "application.py"]
+COPY ["utils.py", "utils.py"]
 
 ENTRYPOINT ["python3", "application.py"]
 

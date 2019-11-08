@@ -374,6 +374,7 @@ def test_get_task():
         assert "enqueued_at" in resp2.json()
         assert "description" in resp2.json()
         assert "status" in resp2.json()
+        assert "result" in resp2.json()
 
     finally:
         p.terminate()

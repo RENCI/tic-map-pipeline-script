@@ -7,3 +7,6 @@
 [submodule "map-pipeline"]
 	path = map-pipeline
 	url = https://github.com/RENCI/map-pipeline
+[submodule "tx-utils"]
+	path = tx-utils
+	url = https://github.com/RENCI/tx-utils
