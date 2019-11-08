@@ -349,7 +349,7 @@ def test_task():
     time.sleep(10)
     try:
         resp0 = requests.get("http://localhost:5000/task")
-        assert len(resp0.json()) == 0
+        assert len(resp0.json()["queued"]) == 0
         resp = requests.post("http://localhost:5000/backup")
         resp2 = requests.get("http://localhost:5000/task")
         assert "queued" in resp2.json()
@@ -395,18 +395,18 @@ def test_delete_task():
     time.sleep(10)
     try:
         resp0 = requests.get("http://localhost:5000/task")
-        assert len(resp0.json()) == 0
+        assert len(resp0.json()["queued"]) == 0
         resp = requests.post("http://localhost:5000/sync")
         resp1 = requests.post("http://localhost:5000/sync")
         resp2 = requests.get("http://localhost:5000/task")
-        assert len(resp2.json()) == 2
-        assert resp.json() in resp2.json()
-        assert resp1.json() in resp2.json()
+        assert len(resp2.json()["queued"]) == 2
+        assert resp.json() in resp2.json()["queued"]
+        assert resp1.json() in resp2.json()["queued"]
         requests.delete("http://localhost:5000/task/" + resp1.json())
         resp3 = requests.get("http://localhost:5000/task")
-        assert len(resp3.json()) == 1
-        assert resp.json() in resp3.json()
-        assert resp1.json() not in resp3.json()
+        assert len(resp3.json()["queued"]) == 1
+        assert resp.json() in resp3.json()["queue"]
+        assert resp1.json() not in resp3.json()["queue"]
     finally:
         p.terminate()
         reload.clearTasks()

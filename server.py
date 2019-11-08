@@ -17,7 +17,7 @@ from stat import S_ISREG, ST_MTIME, ST_MODE
 from flask import Flask, request
 import redis
 from rq import Queue
-from rq.registry import StartedJobRegistry, FinishedJobRegistry, FailedJobRegistry, DeferredJobRegister
+from rq.registry import StartedJobRegistry, FinishedJobRegistry, FailedJobRegistry, DeferredJobRegistry
 import tempfile
 import logging
 import csv
@@ -25,7 +25,7 @@ import reload
 import utils
 
 redis_conn = redis.StrictRedis(host=os.environ["REDIS_QUEUE_HOST"], port=int(os.environ["REDIS_QUEUE_PORT"]), db=int(os.environ["REDIS_QUEUE_DB"]))
-q = Queue(connection=rc)
+q = Queue(connection=redis_conn)
 
 TASK_TIME=3600
 
@@ -143,7 +143,7 @@ def server(ctx):
         startedjr = StartedJobRegistry("default", connection=redis_conn)
         finishedjr = FinishedJobRegistry("default", connection=redis_conn)
         failedjr = FailedJobRegistry("default", connection=redis_conn)
-        deferred = DeferredJobRegister("defaut", connection=redis_conn)
+        deferredjr = DeferredJobRegistry("defaut", connection=redis_conn)
 
         def job_registry_to_json(jr):
             return {
@@ -152,11 +152,10 @@ def server(ctx):
             }
         return json.dumps({
             "queued": q.job_ids,
-            "started": job_registry_to_json(startedjr)
+            "started": job_registry_to_json(startedjr),
             "finished": job_registry_to_json(finishedjr),
             "failed": job_registry_to_json(failedjr),
-            "deferred": job_registry_to_json(deferredjr),
-            "expired": job_registry_to_json(startedjr)
+            "deferred": job_registry_to_json(deferredjr)
         })
             
     @app.route("/task/<string:taskid>", methods=["GET", "DELETE"])
