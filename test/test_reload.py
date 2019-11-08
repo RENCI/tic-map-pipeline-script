@@ -60,7 +60,7 @@ def bag_contains(a, b):
 def init_db():
     os.chdir("/")
     ctx = reload.context()
-    reload._createTables(ctx)
+    reload.createTables(ctx)
     yield
 
 @pytest.fixture(scope="session", autouse=True)
