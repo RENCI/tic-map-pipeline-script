@@ -16,6 +16,7 @@ import json
 import csv
 import yaml
 from contextlib import contextmanager
+import re
 
 def countrows(src, mime):
     if mime == "text/csv":
@@ -665,6 +666,7 @@ def do_test_post_table(verb1, verb2, src, cnttype, tablename, kvp1, kvp2, conten
         assert(resp.json() == [])
         print("post " + tablename)
         resp = do_post_table(verb1, tablename, kvp1, src, cnttype)
+        print(resp.text)
         assert resp.status_code == 200
         taskid = resp.json()
         assert isinstance(taskid, str)
@@ -692,19 +694,51 @@ def do_test_post_table(verb1, verb2, src, cnttype, tablename, kvp1, kvp2, conten
 
 
 def test_put_error_duplicate_column_upload():
-    do_test_post_error(requests.put, "/add/ssd_error_duplicate_column_upload.csv", "text/csv", "SiteInformation", {}, 405, "duplicate header in upload")
+    do_test_post_error(requests.put, "/add/ssd_error_duplicate_column_upload.csv", "text/csv", "SiteInformation", {}, 405, "duplicate header\\(s\\) in upload \\['siteNumber'\\]")
 
 
 def test_put_error_duplicate_column_input():
-    do_test_post_error(requests.put, "/add/ssd.csv", "text/csv", "SiteInformation", {"siteNumber": None}, 405, "duplicate header in input ['SiteNumber']")
+    do_test_post_error(requests.put, "/add/ssd.csv", "text/csv", "SiteInformation", {"siteNumber": None}, 405, "duplicate header\\(s\\) in input \\['siteNumber'\\]")
     
 
 def test_put_error_undefined_column_upload():
-    do_test_post_error(requests.put, "/add/ssd_error_undefined_column_upload.csv", "text/csv", "SiteInformation", {}, 405, "undefined header in input ['header']")
+    do_test_post_error(requests.put, "/add/ssd_error_undefined_column_upload.csv", "text/csv", "SiteInformation", {}, 405, "undefined header\\(s\\) in input \\['header'\\] available \\[.*\\]")
 
 
 def test_put_error_undefined_column_input():
-    do_test_post_error(requests.put, "/add/ssd.csv", "text/csv", "SiteInformation", {"header": None}, 405, "undefined header in input ['header']")
+    do_test_post_error(requests.put, "/add/ssd.csv", "text/csv", "SiteInformation", {"header": None}, 405, "undefined header\\(s\\) in input \\['header'\\] available \\[.*\\]")
+    
+
+def test_put_error_number_of_items0():
+    do_test_post_error(requests.put, "/add/ssd_error_wrong_number_of_items0.csv", "text/csv", "SiteInformation", {"header": None}, 405, "row 0 number of items, expected 1, encountered 0")
+    
+
+def test_put_error_number_of_items2():
+    do_test_post_error(requests.put, "/add/ssd_error_wrong_number_of_items2.csv", "text/csv", "SiteInformation", {"header": None}, 405, "row 0 number of items, expected 1, encountered 2")
+    
+
+def test_post_error_duplicate_column_upload():
+    do_test_post_error(requests.post, "/add/ssd_error_duplicate_column_upload.csv", "text/csv", "SiteInformation", {}, 405, "duplicate header\\(s\\) in upload \\['siteNumber'\\]")
+
+
+def test_post_error_duplicate_column_input():
+    do_test_post_error(requests.post, "/add/ssd.csv", "text/csv", "SiteInformation", {"siteNumber": None}, 405, "duplicate header\\(s\\) in input \\['siteNumber'\\]")
+    
+
+def test_post_error_undefined_column_upload():
+    do_test_post_error(requests.post, "/add/ssd_error_undefined_column_upload.csv", "text/csv", "SiteInformation", {}, 405, "undefined header\\(s\\) in input \\['header'\\] available \\[.*\\]")
+
+
+def test_post_error_undefined_column_input():
+    do_test_post_error(requests.post, "/add/ssd.csv", "text/csv", "SiteInformation", {"header": None}, 405, "undefined header\\(s\\) in input \\['header'\\] available \\[.*\\]")
+    
+
+def test_post_error_number_of_items0():
+    do_test_post_error(requests.post, "/add/ssd_error_wrong_number_of_items0.csv", "text/csv", "SiteInformation", {"header": None}, 405, "row 0 number of items, expected 1, encountered 0")
+    
+
+def test_post_error_number_of_items2():
+    do_test_post_error(requests.post, "/add/ssd_error_wrong_number_of_items2.csv", "text/csv", "SiteInformation", {"header": None}, 405, "row 0 number of items, expected 1, encountered 2")
     
 
 def do_test_post_error(verb1, src, cnttype, tablename, kvp1, status_code, resp_text):
@@ -720,7 +754,7 @@ def do_test_post_error(verb1, src, cnttype, tablename, kvp1, status_code, resp_t
         resp = do_post_table(verb1, tablename, kvp1, src, cnttype)
         assert resp.status_code == status_code
         taskid = resp.text
-        assert taskid == resp_text
+        assert re.match(resp_text, taskid)
     finally:
         pWorker.terminate() 
         pServer.terminate()
