@@ -18,6 +18,8 @@ import yaml
 from contextlib import contextmanager
 import re
 
+WAIT_PERIOD = 3
+
 def countrows(src, mime):
     if mime == "text/csv":
         with open(src, newline="", encoding="utf-8") as inf:
@@ -315,7 +317,7 @@ def test_sync_endpoint():
     ctx = reload.context()
     p = Process(target = server.server, args=[ctx], kwargs={})
     p.start()
-    time.sleep(10)
+    time.sleep(WAIT_PERIOD)
     try:
         resp = requests.post("http://localhost:5000/sync")
         assert resp.status_code == 200
@@ -331,7 +333,7 @@ def test_back_up_endpoint():
     ctx = reload.context()
     p = Process(target = server.server, args=[ctx], kwargs={})
     p.start()
-    time.sleep(10)
+    time.sleep(WAIT_PERIOD)
     try:
         resp = requests.get("http://localhost:5000/backup")
         assert resp.status_code == 200
@@ -347,7 +349,7 @@ def test_task():
     ctx = reload.context()
     p = Process(target = server.server, args=[ctx], kwargs={})
     p.start()
-    time.sleep(10)
+    time.sleep(WAIT_PERIOD)
     try:
         resp0 = requests.get("http://localhost:5000/task")
         assert len(resp0.json()["queued"]) == 0
@@ -370,7 +372,7 @@ def test_get_task():
     ctx = reload.context()
     p = Process(target = server.server, args=[ctx], kwargs={})
     p.start()
-    time.sleep(10)
+    time.sleep(WAIT_PERIOD)
     try:
         resp = requests.post("http://localhost:5000/backup")
         resp2 = requests.get("http://localhost:5000/task/" + resp.json())
@@ -393,7 +395,7 @@ def test_delete_task():
     ctx = reload.context()
     p = Process(target = server.server, args=[ctx], kwargs={})
     p.start()
-    time.sleep(10)
+    time.sleep(WAIT_PERIOD)
     try:
         resp0 = requests.get("http://localhost:5000/task")
         assert len(resp0.json()["queued"]) == 0
@@ -431,7 +433,7 @@ def test_start_worker():
     workers = Worker.all(connection=reload.redisQueue())
     assert len(list(workers)) == 0
     p.start()
-    time.sleep(10)
+    time.sleep(WAIT_PERIOD)
     workers = Worker.all(connection=reload.redisQueue())
     assert len(list(workers)) == 1
     p.terminate()
@@ -656,10 +658,10 @@ def do_test_post_table(verb1, verb2, src, cnttype, tablename, kvp1, kvp2, conten
     ctx = reload.context()
     pServer = Process(target = server.server, args=[ctx], kwargs={})
     pServer.start()
-    time.sleep(10)
+    time.sleep(WAIT_PERIOD)
     pWorker = Process(target = reload.startWorker)
     pWorker.start()
-    time.sleep(10)
+    time.sleep(WAIT_PERIOD)
     try:
         print("get " + tablename)
         resp = requests.get("http://localhost:5000/table/" + tablename)
@@ -746,10 +748,10 @@ def do_test_post_error(verb1, src, cnttype, tablename, kvp1, status_code, resp_t
     ctx = reload.context()
     pServer = Process(target = server.server, args=[ctx], kwargs={})
     pServer.start()
-    time.sleep(10)
+    time.sleep(WAIT_PERIOD)
     pWorker = Process(target = reload.startWorker)
     pWorker.start()
-    time.sleep(10)
+    time.sleep(WAIT_PERIOD)
     try:
         resp = do_post_table(verb1, tablename, kvp1, src, cnttype)
         assert resp.status_code == status_code
@@ -802,10 +804,10 @@ def test_post_table_column():
 
     pServer = Process(target = server.server, args=[ctx], kwargs={})
     pServer.start()
-    time.sleep(10)
+    time.sleep(WAIT_PERIOD)
     pWorker = Process(target = reload.startWorker)
     pWorker.start()
-    time.sleep(10)
+    time.sleep(WAIT_PERIOD)
 
     try:
         resp = do_post_table_column(verb1, tablename, column, kvp1, fn, cnttype)
