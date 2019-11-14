@@ -1,7 +1,6 @@
 import os
 import subprocess
 import sys
-from psycopg2 import connect
 import schedule
 import time
 import requests
@@ -21,6 +20,7 @@ from rq.registry import StartedJobRegistry, FinishedJobRegistry, FailedJobRegist
 import tempfile
 import logging
 import csv
+from oslash import Left, Right
 import reload
 import utils
 
@@ -79,7 +79,6 @@ def server(ctx):
         }, job_timeout=TASK_TIME)
         return json.dumps(pSync.id)
 
-
     def uploadFile():
         tf = tempfile.NamedTemporaryFile(delete=False)
         try:
@@ -108,12 +107,7 @@ def server(ctx):
             os.unlink(tfname)
             logger.error("exception " + str(e))
             raise
-
-    def handleTable(handler, ctx, tablename):
-        tfname, kvp = uploadFile()
-        pTable = q.enqueue(handleTableFunc, args=[handler, [ctx, tablename, tfname, kvp], tfname], job_timeout=TASK_TIME)
-        return json.dumps(pTable.id)            
-
+        
     @app.route("/table/<string:tablename>", methods=["GET", "POST", "PUT"])
     def table(tablename):
         if request.method == "GET":
@@ -126,17 +120,20 @@ def server(ctx):
             logger.info("post table")
             return handleTable(reload.insertDataIntoTable, ctx, tablename)
             
-    def handleTableColumn(handler, ctx, tablename, columnname):
+    def handleTable(handler, ctx, tablename, *args):
         tfname, kvp = uploadFile()
-                
-        pTable = q.enqueue(handleTableFunc, args=[handler, [ctx, tablename, columnname, tfname, kvp], tfname], job_timeout=TASK_TIME)
-        return json.dumps(pTable.id)            
+        ret = reload.validateTable(ctx, tablename, tfname, kvp)
+        if isinstance(ret, Left):
+            return ret.value, 405
+        else:    
+            pTable = q.enqueue(handleTableFunc, args=[handler, [ctx, tablename, *args, tfname, kvp], tfname], job_timeout=TASK_TIME)
+            return json.dumps(pTable.id)            
 
     @app.route("/table/<string:tablename>/column/<string:columnname>", methods=["POST"])
     def tableColumn(tablename, columnname):
         if request.method == "POST":
             logger.info("post incremental update table")
-            return handleTableColumn(reload.updateDataIntoTableColumn, ctx, tablename, columnname)
+            return handleTable(reload.updateDataIntoTableColumn, ctx, tablename, columnname)
             
     @app.route("/task", methods=["GET"])
     def task():

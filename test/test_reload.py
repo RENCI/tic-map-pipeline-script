@@ -405,8 +405,8 @@ def test_delete_task():
         requests.delete("http://localhost:5000/task/" + resp1.json())
         resp3 = requests.get("http://localhost:5000/task")
         assert len(resp3.json()["queued"]) == 1
-        assert resp.json() in resp3.json()["queue"]
-        assert resp1.json() not in resp3.json()["queue"]
+        assert resp.json() in resp3.json()["queued"]
+        assert resp1.json() not in resp3.json()["queued"]
     finally:
         p.terminate()
         reload.clearTasks()
@@ -683,6 +683,44 @@ def do_test_post_table(verb1, verb2, src, cnttype, tablename, kvp1, kvp2, conten
         resp = requests.get("http://localhost:5000/table/" + tablename)
         respjson = resp.json()
         assert(bag_contains(respjson, content2))
+    finally:
+        pWorker.terminate() 
+        pServer.terminate()
+        reload.clearTasks()
+        reload.clearDatabase(ctx)
+        reload.createTables(ctx)
+
+
+def test_put_error_duplicate_column_upload():
+    do_test_post_error(requests.put, "/add/ssd_error_duplicate_column_upload.csv", "text/csv", "SiteInformation", {}, 405, "duplicate header in upload")
+
+
+def test_put_error_duplicate_column_input():
+    do_test_post_error(requests.put, "/add/ssd.csv", "text/csv", "SiteInformation", {"siteNumber": None}, 405, "duplicate header in input ['SiteNumber']")
+    
+
+def test_put_error_undefined_column_upload():
+    do_test_post_error(requests.put, "/add/ssd_error_undefined_column_upload.csv", "text/csv", "SiteInformation", {}, 405, "undefined header in input ['header']")
+
+
+def test_put_error_undefined_column_input():
+    do_test_post_error(requests.put, "/add/ssd.csv", "text/csv", "SiteInformation", {"header": None}, 405, "undefined header in input ['header']")
+    
+
+def do_test_post_error(verb1, src, cnttype, tablename, kvp1, status_code, resp_text):
+    
+    ctx = reload.context()
+    pServer = Process(target = server.server, args=[ctx], kwargs={})
+    pServer.start()
+    time.sleep(10)
+    pWorker = Process(target = reload.startWorker)
+    pWorker.start()
+    time.sleep(10)
+    try:
+        resp = do_post_table(verb1, tablename, kvp1, src, cnttype)
+        assert resp.status_code == status_code
+        taskid = resp.text
+        assert taskid == resp_text
     finally:
         pWorker.terminate() 
         pServer.terminate()

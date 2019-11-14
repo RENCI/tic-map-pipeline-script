@@ -23,6 +23,7 @@ from rq import Queue, Worker, Connection
 import socket
 import tempfile
 import csv
+from oslash import Left, Right
 import utils
 
 sherlock.configure(backend=sherlock.backends.REDIS, client=redis.StrictRedis(host=os.environ["REDIS_LOCK_HOST"], port=int(os.environ["REDIS_LOCK_PORT"]), db=int(os.environ["REDIS_LOCK_DB"])), expire=int(os.environ["REDIS_LOCK_EXPIRE"]), timeout=int(os.environ["REDIS_LOCK_TIMEOUT"]))
@@ -306,7 +307,7 @@ def getColumnDataType(ctx, table, column):
     cursor.execute('''
 select data_type
 from information_schema.columns
-    where table_schema NOT IN ('information_schema', 'pg_catalog') and table_name=%s and column_name=%s
+where table_schema NOT IN ('information_schema', 'pg_catalog') and table_name=%s and column_name=%s
 order by table_schema, table_name
     ''', (table, column))
     rows = cursor.fetchall()
@@ -315,6 +316,36 @@ order by table_schema, table_name
     conn.close()
     return dt
 
+
+def validateTable(ctx, tablename, tfname, kvp):
+    with open(tfname, "r", newline="", encoding="utf-8") as tfi:
+        reader = csv.reader(tfi)
+        header = next(reader)
+        if len(header) > len(set(header)):
+            return Left("duplicate headers in upload")
+        header2 = list(kvp.keys())
+        i2 = [a for a in header if a in header2]
+        if len(i2) > 0:
+            return Left(f"duplicate headers in input {i2}")
+        conn = connect(user=ctx["dbuser"], password=ctx["dbpass"], host=ctx["dbhost"], dbname=ctx["dbname"])
+        cursor = conn.cursor()
+        try:
+            cursor.execute('''
+select column_name, data_type
+from information_schema.columns
+where table_schema NOT IN ('information_schema', 'pg_catalog') and table_name=%s
+order by table_schema, table_name
+''', (tablename,))
+            rows = cursor.fetchall()
+            header3 = map(lambda r:r[0], rows)
+            d2 = [a for a in header + header2 if a not in header3]
+            if len(d2) > 0:
+                return Left(f"undefined header in input {d2}")
+            return Right(())
+        finally:
+            cursor.close()
+            conn.close()
+        
 
 def updateDataIntoTableColumn(ctx, table, column, f, kvp):
     with Lock(G_LOCK):
