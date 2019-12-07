@@ -79,11 +79,12 @@ def pause():
 @pytest.fixture(scope='function', autouse=True)
 def test_log(request):
     print("Test '{}' STARTED".format(request.node.nodeid)) # Here logging is used, you can use whatever you want to use for logs
+    sys.stdout.flush()
     try:
         yield
     finally:
         print("Test '{}' COMPLETED".format(request.node.nodeid))
-
+        sys.stdout.flush()
     
 def test_downloadData():
     ctx = reload.context()
@@ -393,12 +394,14 @@ def test_get_task():
 def test_get_all_tasks():
     
     ctx = reload.context()
+    pServer = Process(target = server.server, args=[ctx], kwargs={})
+    print("starting server")
+    pServer.start()
+    time.sleep(WAIT_PERIOD)
+    print("server started")
     reload.clearTasks()
     reload.clearDatabase(ctx)
     reload.createTables(ctx)
-    pServer = Process(target = server.server, args=[ctx], kwargs={})
-    pServer.start()
-    time.sleep(WAIT_PERIOD)
     pWorker = Process(target = reload.startWorker)
     pWorker.start()
     time.sleep(WAIT_PERIOD)

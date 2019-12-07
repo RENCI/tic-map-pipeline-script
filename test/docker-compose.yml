@@ -19,7 +19,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    command: ["-s", "-x", "-k", "test_get_all_tasks"]
+    command: ["-s", "-x", "-vv", "-k", "test_get_all_tasks"]
     image: pmd-pipeline-reload-test:0.2.20
     environment:
       POSTGRES_DATABASE_NAME: $POSTGRES_DB
