@@ -390,6 +390,49 @@ def test_get_task():
         reload.clearTasks()
 
 
+def test_get_all_tasks():
+    
+    ctx = reload.context()
+    pServer = Process(target = server.server, args=[ctx], kwargs={})
+    pServer.start()
+    time.sleep(WAIT_PERIOD)
+    pWorker = Process(target = reload.startWorker)
+    pWorker.start()
+    time.sleep(WAIT_PERIOD)
+    try:
+        resp0 = requests.get("http://localhost:5000/task")
+        assert len(resp0.json()["queued"]) == 0
+        resp1 = requests.post("http://localhost:5000/sync")
+        task_id = resp1.json()
+        time.sleep(1)
+        resp2 = requests.get("http://localhost:5000/task")
+        assert resp2.json() == {
+            "queued": [],
+            "started": {
+                "job_ids": [task_id],
+                "expired_job_ids": []
+            },
+            "finished": {
+                "job_ids": [],
+                "expired_job_ids": []
+            },
+            "failed": {
+                "job_ids": [],
+                "expired_job_ids": []
+            },
+            "deferred": {
+                "job_ids": [],
+                "expired_job_ids": []
+            }
+        }
+    finally:
+        pWorker.terminate() 
+        pServer.terminate()
+        reload.clearTasks()
+        reload.clearDatabase(ctx)
+        reload.createTables(ctx)
+
+
 def test_delete_task():
     
     ctx = reload.context()
