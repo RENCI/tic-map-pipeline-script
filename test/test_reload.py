@@ -393,6 +393,9 @@ def test_get_task():
 def test_get_all_tasks():
     
     ctx = reload.context()
+    reload.clearTasks()
+    reload.clearDatabase(ctx)
+    reload.createTables(ctx)
     pServer = Process(target = server.server, args=[ctx], kwargs={})
     pServer.start()
     time.sleep(WAIT_PERIOD)
@@ -404,7 +407,7 @@ def test_get_all_tasks():
         assert len(resp0.json()["queued"]) == 0
         resp1 = requests.post("http://localhost:5000/sync")
         task_id = resp1.json()
-        time.sleep(1)
+        wait_for_task_to_start(task_id)
         resp2 = requests.get("http://localhost:5000/task")
         assert resp2.json() == {
             "queued": [],
@@ -464,6 +467,17 @@ def wait_for_task_to_finish(taskid):
     resp = requests.get("http://localhost:5000/task/" + taskid)
     print(resp.json())
     while resp.json()["status"] in ["queued", "started"]:
+        time.sleep(1)
+        resp = requests.get("http://localhost:5000/task/" + taskid)
+        print(resp.json())
+
+
+def wait_for_task_to_start(taskid):
+    
+    ctx = reload.context()
+    resp = requests.get("http://localhost:5000/task/" + taskid)
+    print(resp.json())
+    while resp.json()["status"] in ["queued"]:
         time.sleep(1)
         resp = requests.get("http://localhost:5000/task/" + taskid)
         print(resp.json())

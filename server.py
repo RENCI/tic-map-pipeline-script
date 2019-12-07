@@ -144,8 +144,8 @@ def server(ctx):
 
         def job_registry_to_json(jr):
             return {
-                "job_ids": startedjr.get_job_ids(),
-                "expired_job_ids": startedjr.get_expired_job_ids(),
+                "job_ids": jr.get_job_ids(),
+                "expired_job_ids": jr.get_expired_job_ids(),
             }
         return json.dumps({
             "queued": q.job_ids,
