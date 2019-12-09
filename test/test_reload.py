@@ -17,6 +17,7 @@ import csv
 import yaml
 from contextlib import contextmanager
 import re
+import sys
 
 WAIT_PERIOD = 3
 
@@ -75,7 +76,7 @@ def pause():
             input("Press Enter to continue...")
 
 
-        
+       
 @pytest.fixture(scope='function', autouse=True)
 def test_log(request):
     print("Test '{}' STARTED".format(request.node.nodeid)) # Here logging is used, you can use whatever you want to use for logs
@@ -395,16 +396,22 @@ def test_get_all_tasks():
     
     ctx = reload.context()
     pServer = Process(target = server.server, args=[ctx], kwargs={})
-    print("starting server")
+    print("starting server ctx = " + str(ctx))
     pServer.start()
+    print("server started, waiting for " + str(WAIT_PERIOD))
     time.sleep(WAIT_PERIOD)
-    print("server started")
+    print("clearing tasks")
     reload.clearTasks()
+    print("clearing database")
     reload.clearDatabase(ctx)
+    print("creating tables")
     reload.createTables(ctx)
+    print("starting worker")
     pWorker = Process(target = reload.startWorker)
     pWorker.start()
+    print("worker started, waiting for " + str(WAIT_PERIOD))
     time.sleep(WAIT_PERIOD)
+    print("set up")
     try:
         resp0 = requests.get("http://localhost:5000/task")
         assert len(resp0.json()["queued"]) == 0
