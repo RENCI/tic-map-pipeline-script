@@ -10,3 +10,6 @@
 [submodule "tx-utils"]
 	path = tx-utils
 	url = https://github.com/RENCI/tx-utils
+[submodule "test/redcap/tx-utils"]
+	path = test/redcap/tx-utils
+	url = https://github.com/RENCI/tx-utils

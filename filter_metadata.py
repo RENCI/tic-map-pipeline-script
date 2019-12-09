@@ -24,8 +24,6 @@ with open(mapping) as f:
             
         fields |= set(fields2)
 
-print("fields =", fields)
-        
 def match(k, fields):
     for f in fields:
         if f == k or (f.startswith(k) and f[len(k):].startswith("___")):
@@ -43,11 +41,15 @@ with open(data) as f:
             }
             rows.append(row)
 
-        print(record["field_name"])
         if match(record["field_name"], fields) and (record["select_choices_or_calculations"] == "" or re.match(r"^[0-9]+, [^|]*( [|] [0-9]+, [^|]*)*$", record["select_choices_or_calculations"]) is not None):
+            if record["select_choices_or_calculations"] == "":
+                select_choices_or_calculations = ""
+            else:
+                select_choices_or_calculations = " | ".join(map(lambda i : i + ", choice " + i, map(lambda i: i.split(",")[0].strip(), record["select_choices_or_calculations"].split("|"))))
+            
             row = {
                 "field_name": record["field_name"],
-                "select_choices_or_calculations": "1, choice one | 2, choice 2 | 3, choice 3"
+                "select_choices_or_calculations": select_choices_or_calculations
             }
             rows.append(row)
 
