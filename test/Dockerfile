@@ -1,11 +1,14 @@
-FROM ctmd-pipeline-reload:0.2.21
+FROM ctmd-pipeline-reload:0.2.22
 
 RUN mkdir backup
 RUN pip3 install pytest hypothesis pyyaml pytest-timeout oslash
 RUN mkdir test
 RUN mv reload.py server.py utils.py test
 
+COPY test_utils.py test/test_utils.py
 COPY test_reload.py test/test_reload.py
+COPY test_table.py test/test_table.py
+COPY conftest.py test/conftest.py
 COPY redcap/record.json redcap/record.json
 COPY redcap/metadata.json redcap/metadata.json
 COPY tables etlout

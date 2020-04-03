@@ -81,9 +81,11 @@ def server(ctx):
 
     def uploadFile():
         tf = tempfile.NamedTemporaryFile(delete=False)
+        tf2 = tempfile.NamedTemporaryFile(delete=False)
         try:
             tf.close()
             tfname = tf.name
+            tfname2 = tf2.name
             f = request.files["data"]
             if request.form["content-type"] == "application/json":
                 j = json.load(f)
@@ -97,7 +99,15 @@ def server(ctx):
                     for rowdict in j:
                         writer.writerow([rowdict[key] for key in keys])
             elif request.form["content-type"] == "text/csv":
-                f.save(tfname)
+                f.save(tfname2)
+                with open(tfname2, "r", newline="", encoding="utf-8") as tfi2:
+                    with open(tfname, "w", newline="", encoding="utf-8") as tfi:
+                        reader = csv.reader(tfi2)
+                        writer = csv.writer(tfi)
+                        if request.form.get("has_comments", "false") == "true":
+                            next(reader)
+                        for row in reader:
+                            writer.writerow(row)
             else:
                 logger.error("unsupported type")
                 raise RuntimeError("unsupported type")

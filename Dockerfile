@@ -47,10 +47,10 @@ RUN apt-get update && apt-get install -y python3-pip wget openjdk-8-jdk postgres
 RUN pip3 install schedule pandas psycopg2-binary csvkit requests flask redis rq oslash
 RUN pip3 install git+https://github.com/vaidik/sherlock.git@77742ba91a24f75ee62e1895809901bde018654f
 
-RUN wget http://apache.spinellicreations.com/spark/spark-2.4.4/spark-2.4.4-bin-hadoop2.7.tgz && echo "2E3A5C853B9F28C7D4525C0ADCB0D971B73AD47D5CCE138C85335B9F53A6519540D3923CB0B5CEE41E386E49AE8A409A51AB7194BA11A254E037A848D0C4A9E5 spark-2.4.4-bin-hadoop2.7.tgz" | sha512sum -c -
+RUN wget http://apache.spinellicreations.com/spark/spark-2.4.5/spark-2.4.5-bin-hadoop2.7.tgz && echo "2426a20c548bdfc07df288cd1d18d1da6b3189d0b78dee76fa034c52a4e02895f0ad460720c526f163ba63a17efae4764c46a1cd8f9b04c60f9937a554db85d2  spark-2.4.5-bin-hadoop2.7.tgz" | sha512sum -c -
 
-RUN tar zxvf spark-2.4.4-bin-hadoop2.7.tgz
-ENV PATH="/spark-2.4.4-bin-hadoop2.7/bin:${PATH}"
+RUN tar zxvf spark-2.4.5-bin-hadoop2.7.tgz
+ENV PATH="/spark-2.4.5-bin-hadoop2.7/bin:${PATH}"
 # set to 1 to reload data from redcap database
 ENV RELOAD_DATABASE=1
 # set to 1 for one off reload
@@ -67,7 +67,7 @@ COPY ["HEAL-data-mapping/HEAL data mapping_finalv6.csv", "HEAL data mapping.csv"
 COPY --from=schema ["/tables.sql", "data/tables.sql"] 
 COPY --from=transform ["map-pipeline/target/scala-2.11/TIC preprocessing-assembly-0.2.0.jar", "TIC preprocessing-assembly.jar"]
 
-COPY ["reload.py", "reload.py"]C
+COPY ["reload.py", "reload.py"]
 COPY ["server.py", "server.py"]
 COPY ["application.py", "application.py"]
 COPY ["utils.py", "utils.py"]
