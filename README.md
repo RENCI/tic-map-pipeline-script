@@ -133,16 +133,16 @@ overwrite table
 ```
 PUT /table/<table>
 ```
-with file `data` in csv with header in utf-8 encoding or json, and `json` for additional columns, and `content-type` for content type of the data
+with file `data` in csv with header in utf-8 encoding or json, and `json` for additional columns, and `content-type` for content type of the data, `has_comments` whether it has comments
 
 append table
 ```
 POST /table/<table>
 ```
-with file `data` in csv with header in utf-8 encoding or json, and `json` for additional columns, and `content-type` for content type of the data
+with file `data` in csv with header in utf-8 encoding or json, and `json` for additional columns, and `content-type` for content type of the data, `has_comments` whether it has comments
 
 update table
 ```
 POST /table/<table>/column/<column>
 ```
-with file `data` in csv with header in utf-8 encoding or json, and `json` for additional columns, and `content-type` for content type of the data
+with file `data` in csv with header in utf-8 encoding or json, and `json` for additional columns, and `content-type` for content type of the data, `has_comments` whether it has comments
