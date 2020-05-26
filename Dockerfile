@@ -14,7 +14,7 @@ FROM ubuntu:18.04 AS schema
 
 RUN apt-get update && apt-get install -y wget curl
 
-COPY ["HEAL-data-mapping/HEAL data mapping_finalv6.csv", "HEAL data mapping.csv"]
+COPY ["HEAL-data-mapping/mapping.csv", "HEAL data mapping.csv"]
 
 RUN curl -sSL https://get.haskellstack.org/ | sh
 COPY ["map-pipeline-schema", "map-pipeline-schema"]
