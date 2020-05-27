@@ -511,7 +511,7 @@ def context():
         "backupDir": os.environ["POSTGRES_DUMP_PATH"],
         "redcapURLBase": os.environ["REDCAP_URL_BASE"],
         "assemblyPath": "TIC preprocessing-assembly.jar",
-        "mappingInputFilePath": "HEAL data mapping.csv",
+        "mappingInputFilePath": "mapping.json",
         "dataInputFilePath": "redcap_export.json",
         "dataDictionaryInputFilePath": "redcap_data_dictionary_export.json",
         "auxiliaryDir": os.environ["AUXILIARY_PATH"],

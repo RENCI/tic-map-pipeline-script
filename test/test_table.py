@@ -579,7 +579,6 @@ tables_yaml='''
   - awardeeSiteAcronym
   - primaryFundingType
   - isFundedPrimarilyByInfrastructure
-  - fundingSource
   - fundingAwardDate
   - isPreviouslyFunded
   

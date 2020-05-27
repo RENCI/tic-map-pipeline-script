@@ -14,13 +14,13 @@ FROM ubuntu:18.04 AS schema
 
 RUN apt-get update && apt-get install -y wget curl
 
-COPY ["HEAL-data-mapping/mapping.csv", "HEAL data mapping.csv"]
+COPY ["HEAL-data-mapping/mapping.json", "mapping.json"]
 
 RUN curl -sSL https://get.haskellstack.org/ | sh
 COPY ["map-pipeline-schema", "map-pipeline-schema"]
 WORKDIR map-pipeline-schema
 RUN stack build
-RUN ["stack", "exec", "map-pipeline-schema-exe", "/HEAL data mapping.csv", "/tables.sql"]
+RUN ["stack", "exec", "map-pipeline-schema-exe", "/mapping.json", "/tables.sql"]
 
 FROM ubuntu:18.04 AS transform
 
@@ -63,7 +63,7 @@ ENV CREATE_TABLES=1
 ENV INSERT_DATA=0
 ENV SERVER=0
 
-COPY ["HEAL-data-mapping/HEAL data mapping_finalv6.csv", "HEAL data mapping.csv"]
+COPY ["HEAL-data-mapping/mapping.json", "mapping.json"]
 COPY --from=schema ["/tables.sql", "data/tables.sql"] 
 COPY --from=transform ["map-pipeline/target/scala-2.11/TIC preprocessing-assembly-0.2.0.jar", "TIC preprocessing-assembly.jar"]
 

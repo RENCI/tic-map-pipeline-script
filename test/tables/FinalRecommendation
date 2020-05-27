@@ -1,2 +1,2 @@
-ProposalID,recommendation,IsServiceFeasible,hoursToOperationalizeService,howOperationalizeService
-0,1,false,ipsum lorem,ipsum lorem
+ProposalID,recommendation
+0,1
