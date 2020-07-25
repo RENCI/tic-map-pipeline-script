@@ -42,6 +42,8 @@ docker-compose up --build -V
 
 `FILTER_PATH` path to filter files to be inner joined with source data
 
+`BLOCK_PATH` path to block files to be right joined with source data and removed
+
 `RELOAD_SCHEDULE` set to `1` to daily reload
 
 `SCHEDULE_RUN_TIME` schedule run time of reload format `HH:MM`

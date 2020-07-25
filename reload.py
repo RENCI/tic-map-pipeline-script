@@ -450,6 +450,7 @@ def etl(ctx):
                          "--data_dictionary_input_file", ctx["dataDictionaryInputFilePath"],
                          "--auxiliary_dir", ctx["auxiliaryDir"],
                          "--filter_dir", ctx["filterDir"],
+                         "--block_dir", ctx["blockDir"],
                          "--output_dir", ctx["outputDirPath"]])
     if cp.returncode != 0:
         logger.error("pipeline encountered an error: " + str(cp.returncode))
@@ -516,6 +517,7 @@ def context():
         "dataDictionaryInputFilePath": "redcap_data_dictionary_export.json",
         "auxiliaryDir": os.environ["AUXILIARY_PATH"],
         "filterDir": os.environ["FILTER_PATH"],
+        "blockDir": os.environ["BLOCK_PATH"],
         "outputDirPath": "data",
         "redisQueueHost": os.environ["REDIS_QUEUE_HOST"],
         "redisQueuePort": os.environ["REDIS_QUEUE_PORT"],
