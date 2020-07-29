@@ -6,7 +6,7 @@ services:
     build:
       context: ./redis/
       dockerfile: Dockerfile
-    image: pmd-pipeline-reload-test-redis-mock:0.2.28
+    image: pmd-pipeline-reload-test-redis-mock:0.2.29
     environment: {}
     ports:
       - 6379
@@ -18,7 +18,7 @@ services:
       context: .
       dockerfile: Dockerfile
     command: ["-s", "-x", "-vv"] # , "-k", "block"]
-    image: pmd-pipeline-reload-test:0.2.28
+    image: pmd-pipeline-reload-test:0.2.29
     environment:
       POSTGRES_DATABASE_NAME: $POSTGRES_DB
       POSTGRES_USER: $POSTGRES_USER
@@ -55,7 +55,7 @@ services:
     build:
       context: ./db/
       dockerfile: Dockerfile
-    image: pmd-pipeline-reload-test-db-mock:0.2.28
+    image: pmd-pipeline-reload-test-db-mock:0.2.29
     environment:
       POSTGRES_DB: $POSTGRES_DB
       POSTGRES_USER: $POSTGRES_USER
@@ -69,7 +69,7 @@ services:
     build:
       context: ./redcap/
       dockerfile: Dockerfile
-    image: pmd-pipeline-reload-test-redcap-mock:0.2.28
+    image: pmd-pipeline-reload-test-redcap-mock:0.2.29
     environment:
       REDCAP_APPLICATION_TOKEN: $REDCAP_APPLICATION_TOKEN
     ports:
