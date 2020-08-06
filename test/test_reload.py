@@ -516,6 +516,28 @@ def do_test_blocklist(blocklist1, exp):
         os.environ["BLOCK_PATH"] = blocklist0
 
 
+def do_test_blocklist2(blocklist1, exp):
+    
+    blocklist0 = os.environ.get("BLOCK_PATH")
+    os.environ["BLOCK_PATH"] = blocklist1
+    ctx = reload.context()
+    shutil.copy("redcap/record2.json", ctx["dataInputFilePath"])
+    shutil.copy("redcap/metadata.json", ctx["dataDictionaryInputFilePath"])
+    assert reload.etl(ctx)
+    with open("/data/tables/Proposal", newline="") as f:
+        reader = csv.reader(f)
+        headers = next(reader)
+        i = sum(1 for row in reader)
+        assert i == exp
+    os.remove(ctx["dataInputFilePath"])
+    os.remove(ctx["dataDictionaryInputFilePath"])
+    shutil.rmtree("/data/tables")
+    if blocklist0 is None:
+        del os.environ["BLOCK_PATH"]
+    else:
+        os.environ["BLOCK_PATH"] = blocklist0
+
+
 def test_blocklist1():
     do_test_blocklist("block1", 0)
     
@@ -526,4 +548,16 @@ def test_blocklist2():
 
 def test_blocklist3():
     do_test_blocklist("block3", 0)
+
     
+def test_blocklist4():
+    do_test_blocklist2("block1", 0)
+    
+
+def test_blocklist5():
+    do_test_blocklist2("block2", 1)
+    
+
+def test_blocklist6():
+    do_test_blocklist2("block3", 0)
+

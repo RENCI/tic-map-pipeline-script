@@ -445,7 +445,7 @@ def etl(ctx):
     if os.path.isdir("data/tables"):
         for f in os.listdir("data/tables"):
             os.remove("data/tables/" + f)
-    cp = subprocess.run(["spark-submit", "--driver-memory", "2g", "--executor-memory", "2g", "--master", "local[*]", "--class", "tic.Transform2", ctx["assemblyPath"],
+    cp = subprocess.run(["spark-submit", "--driver-memory", ctx["sparkDriverMemory"], "--executor-memory", ctx["sparkExecutorMemory"], "--master", "local[*]", "--class", "tic.Transform2", ctx["assemblyPath"],
                          "--mapping_input_file", ctx["mappingInputFilePath"], "--data_input_file", ctx["dataInputFilePath"],
                          "--data_dictionary_input_file", ctx["dataDictionaryInputFilePath"],
                          "--auxiliary_dir", ctx["auxiliaryDir"],
@@ -526,7 +526,9 @@ def context():
         "redisLockPort": os.environ["REDIS_LOCK_PORT"],
         "redisLockDatabase": os.environ["REDIS_LOCK_DB"],
         "redisLockExpire": os.environ["REDIS_LOCK_EXPIRE"],
-        "redisLockTimeout": os.environ["REDIS_LOCK_TIMEOUT"]
+        "redisLockTimeout": os.environ["REDIS_LOCK_TIMEOUT"],
+        "sparkDriverMemory": os.environ["SPARK_DRIVER_MEMORY"],
+        "sparkExecutorMemory": os.environ["SPARK_EXECUTOR_MEMORY"]        
     }
 
 

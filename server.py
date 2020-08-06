@@ -27,7 +27,7 @@ import utils
 redis_conn = redis.StrictRedis(host=os.environ["REDIS_QUEUE_HOST"], port=int(os.environ["REDIS_QUEUE_PORT"]), db=int(os.environ["REDIS_QUEUE_DB"]))
 q = Queue(connection=redis_conn)
 
-TASK_TIME=3600
+TASK_TIME=int(os.environ["TASK_TIME"])
 
 logger = utils.getLogger(__name__)
 
