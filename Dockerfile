@@ -47,10 +47,12 @@ RUN apt-get update && apt-get install -y python3-pip wget openjdk-8-jdk postgres
 RUN pip3 install schedule pandas psycopg2-binary csvkit requests flask redis rq oslash
 RUN pip3 install git+https://github.com/vaidik/sherlock.git@77742ba91a24f75ee62e1895809901bde018654f
 
-RUN wget http://apache.spinellicreations.com/spark/spark-2.4.5/spark-2.4.5-bin-hadoop2.7.tgz && echo "2426a20c548bdfc07df288cd1d18d1da6b3189d0b78dee76fa034c52a4e02895f0ad460720c526f163ba63a17efae4764c46a1cd8f9b04c60f9937a554db85d2  spark-2.4.5-bin-hadoop2.7.tgz" | sha512sum -c -
+RUN wget http://apache.spinellicreations.com/spark/spark-2.4.6/spark-2.4.6-bin-hadoop2.7.tgz && echo "3a9f401eda9b5749cdafd246b1d14219229c26387017791c345a23a65782fb8b25a302bf4ac1ed7c16a1fe83108e94e55dad9639a51c751d81c8c0534a4a9641  spark-2.4.6-bin-hadoop2.7.tgz" | sha512sum -c -
 
-RUN tar zxvf spark-2.4.5-bin-hadoop2.7.tgz
-ENV PATH="/spark-2.4.5-bin-hadoop2.7/bin:${PATH}"
+
+
+RUN tar zxvf spark-2.4.6-bin-hadoop2.7.tgz
+ENV PATH="/spark-2.4.6-bin-hadoop2.7/bin:${PATH}"
 # set to 1 to reload data from redcap database
 ENV RELOAD_DATABASE=1
 # set to 1 for one off reload
