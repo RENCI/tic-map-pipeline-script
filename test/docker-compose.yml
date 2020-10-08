@@ -49,7 +49,7 @@ services:
       PAUSE: $PAUSE
       PRINT_REQUEST: $PRINT_REQUEST
     volumes:
-      - ../HEAL-data-mapping/mapping.json:/mapping.json
+      - ./HEAL-data-mapping/mapping.json:/mapping.json
     depends_on:
       - db
       - redcap

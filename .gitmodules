@@ -1,6 +1,3 @@
-[submodule "HEAL-data-mapping"]
-	path = HEAL-data-mapping
-	url = https://github.com/RENCI/HEAL-data-mapping
 [submodule "map-pipeline-schema"]
 	path = map-pipeline-schema
 	url = https://github.com/RENCI/map-pipeline-schema
@@ -13,3 +10,6 @@
 [submodule "test/redcap/tx-utils"]
 	path = test/redcap/tx-utils
 	url = https://github.com/RENCI/tx-utils
+[submodule "test/HEAL-data-mapping"]
+	path = test/HEAL-data-mapping
+	url = https://github.com/RENCI/HEAL-data-mapping
