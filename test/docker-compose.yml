@@ -6,7 +6,7 @@ services:
     build:
       context: ./redis/
       dockerfile: Dockerfile
-    image: pmd-pipeline-reload-test-redis-mock:0.2.29
+    image: pmd-pipeline-reload-test-redis-mock:0.2.31
     environment: {}
     ports:
       - 6379
@@ -17,8 +17,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    command: ["-s", "-x", "-vv"] # , "-k", "blocklist4"]
-    image: pmd-pipeline-reload-test:0.2.29
+    command: ["-s", "-x", "-vv"] # , "-k", "test_put_error_duplicate_column_upload"]
+    image: pmd-pipeline-reload-test:0.2.31
     environment:
       POSTGRES_DATABASE_NAME: $POSTGRES_DB
       POSTGRES_USER: $POSTGRES_USER
@@ -48,6 +48,8 @@ services:
       SPARK_EXECUTOR_MEMORY: $SPARK_EXECUTOR_MEMORY
       PAUSE: $PAUSE
       PRINT_REQUEST: $PRINT_REQUEST
+    volumes:
+      - ../HEAL-data-mapping/mapping.json:/mapping.json
     depends_on:
       - db
       - redcap
@@ -58,7 +60,7 @@ services:
     build:
       context: ./db/
       dockerfile: Dockerfile
-    image: pmd-pipeline-reload-test-db-mock:0.2.29
+    image: pmd-pipeline-reload-test-db-mock:0.2.31
     environment:
       POSTGRES_DB: $POSTGRES_DB
       POSTGRES_USER: $POSTGRES_USER
@@ -72,7 +74,7 @@ services:
     build:
       context: ./redcap/
       dockerfile: Dockerfile
-    image: pmd-pipeline-reload-test-redcap-mock:0.2.29
+    image: pmd-pipeline-reload-test-redcap-mock:0.2.31
     environment:
       REDCAP_APPLICATION_TOKEN: $REDCAP_APPLICATION_TOKEN
     ports:

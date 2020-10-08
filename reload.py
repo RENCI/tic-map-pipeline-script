@@ -23,7 +23,7 @@ from rq import Queue, Worker, Connection
 import socket
 import tempfile
 import csv
-from oslash import Left, Right
+from tx.functional.either import Left, Right
 import functools
 import utils
 
@@ -194,6 +194,7 @@ def createTables(ctx):
 
 def _createTables(ctx):
     logger.info("create tables start")
+    subprocess.run(["stack", "exec", "map-pipeline-schema-exe", "/mapping.json", "/data/tables.sql"], cwd="/map-pipeline-schema")
     conn = connect(user=ctx["dbuser"], password=ctx["dbpass"], host=ctx["dbhost"], dbname=ctx["dbname"])
     conn.autocommit = True
     cursor = conn.cursor()

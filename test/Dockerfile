@@ -1,7 +1,7 @@
-FROM ctmd-pipeline-reload:0.2.29
+FROM ctmd-pipeline-reload:0.2.31
 
 RUN mkdir backup
-RUN pip3 install pytest hypothesis pyyaml pytest-timeout oslash
+RUN pip3 install pytest hypothesis pyyaml pytest-timeout tx-functional
 RUN mkdir test
 RUN mv reload.py server.py utils.py test
 
