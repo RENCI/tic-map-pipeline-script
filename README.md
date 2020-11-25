@@ -3,7 +3,7 @@
 ### How to build ###
 
 ```
-git submodule init --update
+git submodule update --init
 ```
 
 ```
