@@ -39,7 +39,7 @@ RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ bionic-pgdg main" | tee -
 
 RUN wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
 
-RUN apt-get update && apt-get install -y python3-pip wget openjdk-8-jdk postgresql-client-11
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y python3-pip wget openjdk-8-jdk postgresql-client-11 libmemcached-dev
 RUN pip3 install schedule pandas psycopg2-binary csvkit requests flask redis rq oslash==0.5.1
 RUN pip3 install git+https://github.com/vaidik/sherlock.git@77742ba91a24f75ee62e1895809901bde018654f
 
