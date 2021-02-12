@@ -2,3 +2,6 @@
 
 # Mac
 .DS_Store
+
+# DB
+.metals/
