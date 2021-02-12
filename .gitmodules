@@ -12,4 +12,4 @@
 	url = https://github.com/RENCI/tx-utils
 [submodule "HEAL-data-mapping"]
 	path = HEAL-data-mapping
-	url = https://github.com/RENCI/HEAL-data-mapping
+	url = https://github.com/RENCI/HEAL-data-mapping.git
