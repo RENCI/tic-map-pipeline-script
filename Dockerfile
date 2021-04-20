@@ -33,7 +33,7 @@ RUN stack build
 WORKDIR /
 RUN mkdir data
 
-RUN apt-get update && apt-get install -y wget gnupg git
+RUN apt-get update && apt-get install -y wget gnupg git tzdata
 
 RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ bionic-pgdg main" | tee -a /etc/apt/sources.list.d/pgdg.list
 
@@ -60,6 +60,8 @@ ENV CREATE_TABLES=1
 # set to 1 to insert data
 ENV INSERT_DATA=0
 ENV SERVER=0
+# set time zone
+ENV TZ=America/New_York
 
 COPY --from=transform ["map-pipeline/target/scala-2.11/TIC preprocessing-assembly-0.2.0.jar", "TIC preprocessing-assembly.jar"]
 
