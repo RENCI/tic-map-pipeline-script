@@ -79,7 +79,7 @@ COPY ["reload.py", "reload.py"]
 COPY ["server.py", "server.py"]
 COPY ["application.py", "application.py"]
 COPY ["utils.py", "utils.py"]
-# COPY ["syntheticData_test.json", "syntheticData_test.json"]
+COPY ["test_data.json", "test_data.json"]
 COPY ["HEAL-data-mapping/mapping.json", "mapping.json"]
 
 ENTRYPOINT ["python3", "application.py"]
