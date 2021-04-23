@@ -71,6 +71,8 @@ ENV INSERT_DATA=0
 ENV SERVER=0
 # set time zone
 ENV TZ=America/New_York
+RUN ln -fs /usr/share/zoneinfo/$TZ /etc/localtime && dpkg-reconfigure -f noninteractive tzdata
+
 
 # ENV SPARK_SUBMIT_OPTS=-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5000
 
