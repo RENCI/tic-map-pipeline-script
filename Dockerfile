@@ -12,7 +12,6 @@
 # need to mount backup dir to POSTGRES_DUMP_PATH
 FROM ubuntu:20.04 AS transform
 
-
 RUN apt-get update && apt-get install -y wget openjdk-8-jdk gnupg
 
 RUN echo "deb https://dl.bintray.com/sbt/debian /" | tee -a /etc/apt/sources.list.d/sbt.list
@@ -34,6 +33,7 @@ RUN stack build
 WORKDIR /
 RUN mkdir data
 
+ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y wget gnupg git tzdata
 
 RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ bionic-pgdg main" | tee -a /etc/apt/sources.list.d/pgdg.list
@@ -71,11 +71,6 @@ ENV INSERT_DATA=0
 ENV SERVER=0
 # set time zone
 ENV TZ=America/New_York
-RUN ln -fs /usr/share/zoneinfo/$TZ /etc/localtime && dpkg-reconfigure -f noninteractive tzdata
-
-
-# ENV SPARK_SUBMIT_OPTS=-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=5000
-
 
 COPY --from=transform ["map-pipeline/target/scala-2.11/TIC preprocessing-assembly-0.2.0.jar", "TIC preprocessing-assembly.jar"]
 
