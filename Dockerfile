@@ -33,8 +33,7 @@ RUN stack build
 WORKDIR /
 RUN mkdir data
 
-ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y wget gnupg git tzdata
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y wget gnupg git tzdata
 
 RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ bionic-pgdg main" | tee -a /etc/apt/sources.list.d/pgdg.list
 
