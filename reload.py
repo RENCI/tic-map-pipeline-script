@@ -695,6 +695,8 @@ def context():
         "assemblyPath": "TIC preprocessing-assembly.jar",
         "mappingInputFilePath": "mapping.json",
         "dataInputFilePath": "mapping.json",
+        "useLocalFileDataInputFile": os.environ.get("useLocalFileDataInputFile")
+        or False,
         "dataDictionaryInputFilePath": "redcap_data_dictionary_export.json",
         "auxiliaryDir": os.environ["AUXILIARY_PATH"],
         "filterDir": os.environ["FILTER_PATH"],
@@ -726,7 +728,8 @@ def runPipeline(ctx):
 
 def _runPipeline(ctx):
     if ctx["reloaddb"]:
-        downloadData(ctx)
+        if not ctx["useLocalFileDataInputFile"]:
+            downloadData(ctx)
         downloadDataDictionary(ctx)
     if not backUpDataDictionary(ctx):
         return False
