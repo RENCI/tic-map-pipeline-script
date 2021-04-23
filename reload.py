@@ -659,7 +659,7 @@ def downloadData(ctx):
         "Content-Type": "application/x-www-form-urlencoded",
         "Accept": "application/json",
     }
-    # download(ctx, headers, data, ctx["dataInputFilePath"])
+    download(ctx, headers, data, ctx["dataInputFilePath"])
 
 
 def downloadDataDictionary(ctx):
@@ -694,7 +694,7 @@ def context():
         "redcapURLBase": os.environ["REDCAP_URL_BASE"],
         "assemblyPath": "TIC preprocessing-assembly.jar",
         "mappingInputFilePath": "mapping.json",
-        "dataInputFilePath": "test_data.json",
+        "dataInputFilePath": "mapping.json",
         "dataDictionaryInputFilePath": "redcap_data_dictionary_export.json",
         "auxiliaryDir": os.environ["AUXILIARY_PATH"],
         "filterDir": os.environ["FILTER_PATH"],
