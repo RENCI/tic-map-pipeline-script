@@ -694,9 +694,8 @@ def context():
         "redcapURLBase": os.environ["REDCAP_URL_BASE"],
         "assemblyPath": "TIC preprocessing-assembly.jar",
         "mappingInputFilePath": "mapping.json",
-        "dataInputFilePath": "mapping.json",
-        "useLocalFileDataInputFile": os.environ.get("useLocalFileDataInputFile")
-        or False,
+        "downloadRedcapData": os.getenv("DOWNLOAD_REDCAP_DATA") if os.getenv("DOWNLOAD_REDCAP_DATA") is not None else True,
+        "dataInputFilePath": os.getenv("DATA_INPUT_FILE_PATH") or "redcap_export.json",
         "dataDictionaryInputFilePath": "redcap_data_dictionary_export.json",
         "auxiliaryDir": os.environ["AUXILIARY_PATH"],
         "filterDir": os.environ["FILTER_PATH"],
@@ -728,7 +727,9 @@ def runPipeline(ctx):
 
 def _runPipeline(ctx):
     if ctx["reloaddb"]:
-        if not ctx["useLocalFileDataInputFile"]:
+        logger.info(f"ctx['downloadRedcapData'] {ctx['downloadRedcapData']}")
+        if int(ctx["downloadRedcapData"]):
+            logger.info(f"Downloading data. Using {ctx['dataInputFilePath']}")
             downloadData(ctx)
         downloadDataDictionary(ctx)
     if not backUpDataDictionary(ctx):
