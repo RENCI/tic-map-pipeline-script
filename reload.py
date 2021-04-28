@@ -28,13 +28,26 @@ import functools
 import utils
 
 
-sherlock.configure(backend=sherlock.backends.REDIS, client=redis.StrictRedis(host=os.environ["REDIS_LOCK_HOST"], port=int(os.environ["REDIS_LOCK_PORT"]), db=int(os.environ["REDIS_LOCK_DB"])), expire=int(os.environ["REDIS_LOCK_EXPIRE"]), timeout=int(os.environ["REDIS_LOCK_TIMEOUT"]))
+sherlock.configure(
+    backend=sherlock.backends.REDIS,
+    client=redis.StrictRedis(
+        host=os.environ["REDIS_LOCK_HOST"],
+        port=int(os.environ["REDIS_LOCK_PORT"]),
+        db=int(os.environ["REDIS_LOCK_DB"]),
+    ),
+    expire=int(os.environ["REDIS_LOCK_EXPIRE"]),
+    timeout=int(os.environ["REDIS_LOCK_TIMEOUT"]),
+)
 
-G_LOCK="g_lock"
+G_LOCK = "g_lock"
 
 
 def redisQueue():
-    return redis.StrictRedis(host=os.environ["REDIS_QUEUE_HOST"], port=int(os.environ["REDIS_QUEUE_PORT"]), db=int(os.environ["REDIS_QUEUE_DB"]))
+    return redis.StrictRedis(
+        host=os.environ["REDIS_QUEUE_HOST"],
+        port=int(os.environ["REDIS_QUEUE_PORT"]),
+        db=int(os.environ["REDIS_QUEUE_DB"]),
+    )
 
 
 q = Queue(connection=redisQueue())
@@ -51,10 +64,13 @@ def waitForDatabaseToStart(host, port):
             s.close()
             break
         except socket.error as ex:
-            logger.info("waiting for database to start host=" + host + " port=" + str(port))
+            logger.info(
+                "waiting for database to start host=" + host + " port=" + str(port)
+            )
             time.sleep(1)
     logger.info("database started host=" + host + " port=" + str(port))
-            
+
+
 def waitForRedisToStart(host, port):
     logger.info("waiting for redis to start host=" + host + " port=" + str(port))
     s = redis.StrictRedis(host, port)
@@ -63,7 +79,9 @@ def waitForRedisToStart(host, port):
             s.ping()
             break
         except socket.error as ex:
-            logger.info("waiting for redis to start host=" + host + " port=" + str(port))
+            logger.info(
+                "waiting for redis to start host=" + host + " port=" + str(port)
+            )
             time.sleep(1)
     logger.info("redis started host=" + host + " port=" + str(port))
 
@@ -71,7 +89,17 @@ def waitForRedisToStart(host, port):
 def pgpass(ctx):
     home = str(Path.home())
     with open(home + "/.pgpass", "w+") as f:
-        f.write(ctx["dbhost"] + ":" + ctx["dbport"] + ":" + ctx["dbname"] + ":" + ctx["dbuser"] + ":" + ctx["dbpass"])
+        f.write(
+            ctx["dbhost"]
+            + ":"
+            + ctx["dbport"]
+            + ":"
+            + ctx["dbname"]
+            + ":"
+            + ctx["dbuser"]
+            + ":"
+            + ctx["dbpass"]
+        )
     os.chmod(home + "/.pgpass", stat.S_IREAD | stat.S_IWRITE)
 
 
@@ -83,14 +111,29 @@ def backUpDatabase(ctx, ts):
 def _backUpDatabase(ctx, ts):
     pgpass(ctx)
     pgdumpfile = ctx["backupDir"] + "/" + ts
-    cp = subprocess.run(["pg_dump", "-O", "-d", ctx["dbname"], "-U", ctx["dbuser"], "-h", ctx["dbhost"], "-p", ctx["dbport"], "-f", pgdumpfile])
+    cp = subprocess.run(
+        [
+            "pg_dump",
+            "-O",
+            "-d",
+            ctx["dbname"],
+            "-U",
+            ctx["dbuser"],
+            "-h",
+            ctx["dbhost"],
+            "-p",
+            ctx["dbport"],
+            "-f",
+            pgdumpfile,
+        ]
+    )
     if cp.returncode != 0:
         logger.error("backup encountered an error: " + str(cp.returncode))
         return False
     else:
         return True
 
-            
+
 def deleteBackup(ctx, ts):
     with Lock(G_LOCK):
         return _deleteBackup(ctx, ts)
@@ -104,21 +147,28 @@ def _deleteBackup(ctx, ts):
     except Exception as e:
         logger.error("delete backup error: " + str(e))
         return False
- 
+
 
 def clearDatabase(ctx):
-    conn = connect(user=ctx["dbuser"], password=ctx["dbpass"], host=ctx["dbhost"], dbname=ctx["dbname"])
+    conn = connect(
+        user=ctx["dbuser"],
+        password=ctx["dbpass"],
+        host=ctx["dbhost"],
+        dbname=ctx["dbname"],
+    )
     conn.autocommit = True
     cursor = conn.cursor()
-            
+
     try:
-        cursor.execute("SELECT table_schema,table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_schema,table_name")
+        cursor.execute(
+            "SELECT table_schema,table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_schema,table_name"
+        )
         rows = cursor.fetchall()
         for row in rows:
-            logger.info ("dropping table: " + row[1])
-            cursor.execute("select count(*) from \"" + row[1] + "\"")
+            logger.info("dropping table: " + row[1])
+            cursor.execute('select count(*) from "' + row[1] + '"')
             logger.info(str(cursor.fetchone()[0]) + " rows")
-            query = "drop table \"" + row[1] + "\" cascade"
+            query = 'drop table "' + row[1] + '" cascade'
             logger.info(query)
             cursor.execute(query)
             logger.info("table dropped")
@@ -131,7 +181,7 @@ def clearDatabase(ctx):
     except Exception as e:
         logger.error("clear database encountered an error: " + str(e))
         return False
-        
+
 
 def restoreDatabase(ctx, ts):
     with Lock(G_LOCK):
@@ -144,14 +194,28 @@ def _restoreDatabase(ctx, ts):
     pgpass(ctx)
     pgdumpfile = ctx["backupDir"] + "/" + ts
     logger.info("restoring database")
-    cp = subprocess.run(["psql", "-d", ctx["dbname"], "-U", ctx["dbuser"], "-h", ctx["dbhost"], "-p", ctx["dbport"], "-f", pgdumpfile])
+    cp = subprocess.run(
+        [
+            "psql",
+            "-d",
+            ctx["dbname"],
+            "-U",
+            ctx["dbuser"],
+            "-h",
+            ctx["dbhost"],
+            "-p",
+            ctx["dbport"],
+            "-f",
+            pgdumpfile,
+        ]
+    )
     logger.info("database restored")
     if cp.returncode != 0:
         logger.error("restore encountered an error: " + str(cp.returncode))
         return False
     else:
         return True
-            
+
 
 def dataDictionaryBackUpDirectory(ctx):
     return ctx["backupDir"] + "/redcap_data_dictionary"
@@ -159,15 +223,21 @@ def dataDictionaryBackUpDirectory(ctx):
 
 def backUpDataDictionary(ctx):
     data_dictionary_backup_dir = dataDictionaryBackUpDirectory(ctx)
-    data_dictionary_backup_path = data_dictionary_backup_dir + "/redcap_data_dictionary_export.json"
+    data_dictionary_backup_path = (
+        data_dictionary_backup_dir + "/redcap_data_dictionary_export.json"
+    )
     do_backup = False
     if os.path.isfile(ctx["dataDictionaryInputFilePath"]):
         if not os.path.isfile(data_dictionary_backup_path):
             do_backup = True
-        elif not filecmp.cmp(ctx["dataDictionaryInputFilePath"], data_dictionary_backup_path):
+        elif not filecmp.cmp(
+            ctx["dataDictionaryInputFilePath"], data_dictionary_backup_path
+        ):
             logger.info(data_dictionary_backup_path + " is a file")
             mtime = os.path.getmtime(data_dictionary_backup_path)
-            shutil.copy(data_dictionary_backup_path, data_dictionary_backup_path+str(mtime))
+            shutil.copy(
+                data_dictionary_backup_path, data_dictionary_backup_path + str(mtime)
+            )
             do_backup = True
         if do_backup:
             if not os.path.exists(data_dictionary_backup_dir):
@@ -186,7 +256,7 @@ def download(ctx, headers, data, output):
             if chunk:  # filter out keep-alive new chunks
                 f.write(chunk)
 
-                
+
 def createTables(ctx):
     with Lock(G_LOCK):
         _createTables(ctx)
@@ -194,8 +264,22 @@ def createTables(ctx):
 
 def _createTables(ctx):
     logger.info("create tables start")
-    subprocess.run(["stack", "exec", "map-pipeline-schema-exe", "/mapping.json", "/data/tables.sql"], cwd="/map-pipeline-schema")
-    conn = connect(user=ctx["dbuser"], password=ctx["dbpass"], host=ctx["dbhost"], dbname=ctx["dbname"])
+    subprocess.run(
+        [
+            "stack",
+            "exec",
+            "map-pipeline-schema-exe",
+            "/mapping.json",
+            "/data/tables.sql",
+        ],
+        cwd="/map-pipeline-schema",
+    )
+    conn = connect(
+        user=ctx["dbuser"],
+        password=ctx["dbpass"],
+        host=ctx["dbhost"],
+        dbname=ctx["dbname"],
+    )
     conn.autocommit = True
     cursor = conn.cursor()
     with open("data/tables.sql", encoding="utf-8") as f:
@@ -206,21 +290,26 @@ def _createTables(ctx):
     conn.close()
     logger.info("create tables end")
     return True
-    
+
 
 def getTables(ctx):
-    return list(filter(lambda x : not x.startswith("."), os.listdir("data/tables")))
+    return list(filter(lambda x: not x.startswith("."), os.listdir("data/tables")))
 
 
 def _deleteTables(ctx):
     logger.info("delete tables start")
-    conn = connect(user=ctx["dbuser"], password=ctx["dbpass"], host=ctx["dbhost"], dbname=ctx["dbname"])
+    conn = connect(
+        user=ctx["dbuser"],
+        password=ctx["dbpass"],
+        host=ctx["dbhost"],
+        dbname=ctx["dbname"],
+    )
     conn.autocommit = True
     cursor = conn.cursor()
     tables = getTables(ctx)
     for f in tables:
         logger.info("deleting from table " + f)
-        cursor.execute("DELETE FROM \"" + f + "\"")
+        cursor.execute('DELETE FROM "' + f + '"')
     cursor.close()
     conn.close()
     logger.info("delete tables end")
@@ -269,13 +358,47 @@ def insertDataIntoTable(ctx, table, f, kvp):
     with Lock(G_LOCK):
         return _insertDataIntoTable(ctx, table, f, kvp)
 
-        
+
 def _insertDataIntoTable(ctx, table, f, kvp):
     logger.info("inserting into table " + table)
     checkId(table)
-    cp = runFile(lambda fn: subprocess.run(["csvsql", "--db", "postgresql://"+ctx["dbuser"]+":" + ctx["dbpass"] + "@" + ctx["dbhost"] +"/" + ctx["dbname"], "--insert", "--no-create", "-d", ",", "-e", "utf8", "--no-inference", "--tables", table, fn]), f, kvp)
+    cp = runFile(
+        lambda fn: subprocess.run(
+            [
+                "csvsql",
+                "--db",
+                "postgresql://"
+                + ctx["dbuser"]
+                + ":"
+                + ctx["dbpass"]
+                + "@"
+                + ctx["dbhost"]
+                + "/"
+                + ctx["dbname"],
+                "--insert",
+                "--no-create",
+                "-d",
+                ",",
+                "-e",
+                "utf8",
+                "--no-inference",
+                "--tables",
+                table,
+                fn,
+            ]
+        ),
+        f,
+        kvp,
+    )
     if cp.returncode != 0:
-        logger.error("error inserting data into table " + table + " " + f + " " + str(cp.returncode))
+        logger.error(
+            "error inserting data into table "
+            + table
+            + " "
+            + f
+            + " "
+            + str(cp.returncode)
+        )
         return False
     return True
 
@@ -284,14 +407,19 @@ def updateDataIntoTable(ctx, table, f, kvp):
     with Lock(G_LOCK):
         return _updateDataIntoTable(ctx, table, f, kvp)
 
-    
+
 def _updateDataIntoTable(ctx, table, f, kvp):
     logger.info("inserting into table " + table)
     checkId(table)
 
-    conn = connect(user=ctx["dbuser"], password=ctx["dbpass"], host=ctx["dbhost"], dbname=ctx["dbname"])
+    conn = connect(
+        user=ctx["dbuser"],
+        password=ctx["dbpass"],
+        host=ctx["dbhost"],
+        dbname=ctx["dbname"],
+    )
     cursor = conn.cursor()
-    cursor.execute("delete from \"{0}\"".format(table))
+    cursor.execute('delete from "{0}"'.format(table))
     cursor.close()
     conn.commit()
     conn.close()
@@ -300,19 +428,27 @@ def _updateDataIntoTable(ctx, table, f, kvp):
 
 
 def checkId(i):
-    if "\"" in i:
+    if '"' in i:
         raise RuntimeError("invalid name {0}".format(i))
 
-    
+
 def getColumnDataType(ctx, table, column):
-    conn = connect(user=ctx["dbuser"], password=ctx["dbpass"], host=ctx["dbhost"], dbname=ctx["dbname"])
+    conn = connect(
+        user=ctx["dbuser"],
+        password=ctx["dbpass"],
+        host=ctx["dbhost"],
+        dbname=ctx["dbname"],
+    )
     cursor = conn.cursor()
-    cursor.execute('''
+    cursor.execute(
+        """
 select data_type
 from information_schema.columns
 where table_schema NOT IN ('information_schema', 'pg_catalog') and table_name=%s and column_name=%s
 order by table_schema, table_name
-    ''', (table, column))
+    """,
+        (table, column),
+    )
     rows = cursor.fetchall()
     dt = rows[0][0]
     cursor.close()
@@ -344,17 +480,25 @@ def validateTable(ctx, tablename, tfname, kvp):
         i2 = [a for a in header if a in header2]
         if len(i2) > 0:
             return Left(f"duplicate header(s) in input {i2}")
-        conn = connect(user=ctx["dbuser"], password=ctx["dbpass"], host=ctx["dbhost"], dbname=ctx["dbname"])
+        conn = connect(
+            user=ctx["dbuser"],
+            password=ctx["dbpass"],
+            host=ctx["dbhost"],
+            dbname=ctx["dbname"],
+        )
         cursor = conn.cursor()
         try:
-            cursor.execute('''
+            cursor.execute(
+                """
 select column_name, data_type
 from information_schema.columns
 where table_schema NOT IN ('information_schema', 'pg_catalog') and table_name=%s
 order by table_schema, table_name
-''', (tablename,))
+""",
+                (tablename,),
+            )
             rows = cursor.fetchall()
-            header3 = list(map(lambda r:r[0], rows))
+            header3 = list(map(lambda r: r[0], rows))
             d2 = [a for a in header + header2 if a not in header3]
             if len(d2) > 0:
                 return Left(f"undefined header(s) in input {d2} available {header3}")
@@ -362,7 +506,7 @@ order by table_schema, table_name
         finally:
             cursor.close()
             conn.close()
-        
+
 
 def updateDataIntoTableColumn(ctx, table, column, f, kvp):
     with Lock(G_LOCK):
@@ -374,7 +518,7 @@ def _updateDataIntoTableColumn(ctx, table, column, f, kvp):
     checkId(table)
     checkId(column)
     dt = getColumnDataType(ctx, table, column)
-    
+
     updated = set()
 
     if len(kvp) == 0:
@@ -382,7 +526,12 @@ def _updateDataIntoTableColumn(ctx, table, column, f, kvp):
     else:
         add_headers, add_data = map(list, zip(*kvp.items()))
 
-    conn = connect(user=ctx["dbuser"], password=ctx["dbpass"], host=ctx["dbhost"], dbname=ctx["dbname"])
+    conn = connect(
+        user=ctx["dbuser"],
+        password=ctx["dbpass"],
+        host=ctx["dbhost"],
+        dbname=ctx["dbname"],
+    )
     cursor = conn.cursor()
     with open(f, newline="", encoding="utf-8") as inf:
         reader = csv.reader(inf)
@@ -405,9 +554,11 @@ def _updateDataIntoTableColumn(ctx, table, column, f, kvp):
             row2 = row + add_data
             val = fn(row2[index])
             if val not in updated:
-                cursor.execute("delete from \"{0}\" where \"{1}\" = %s".format(table, column), (val,))
-                updated.add(val)                
-            
+                cursor.execute(
+                    'delete from "{0}" where "{1}" = %s'.format(table, column), (val,)
+                )
+                updated.add(val)
+
     cursor.close()
     conn.commit()
     conn.close()
@@ -417,14 +568,21 @@ def _updateDataIntoTableColumn(ctx, table, column, f, kvp):
 def readDataFromTable(ctx, table):
     logger.info("reading from table " + table)
     checkId(table)
-    conn = connect(user=ctx["dbuser"], password=ctx["dbpass"], host=ctx["dbhost"], dbname=ctx["dbname"])
+    conn = connect(
+        user=ctx["dbuser"],
+        password=ctx["dbpass"],
+        host=ctx["dbhost"],
+        dbname=ctx["dbname"],
+    )
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM \"" + table + "\"")
+    cursor.execute('SELECT * FROM "' + table + '"')
     colnames = [c.name for c in cursor.description]
     rows = cursor.fetchall()
     cursor.close()
     conn.close()
-    return [{colname:str(cell) for colname,cell in zip(colnames, row)} for row in rows]
+    return [
+        {colname: str(cell) for colname, cell in zip(colnames, row)} for row in rows
+    ]
 
 
 def syncDatabase(ctx):
@@ -446,52 +604,74 @@ def etl(ctx):
     if os.path.isdir("data/tables"):
         for f in os.listdir("data/tables"):
             os.remove("data/tables/" + f)
-    cp = subprocess.run(["spark-submit", "--driver-memory", ctx["sparkDriverMemory"], "--executor-memory", ctx["sparkExecutorMemory"], "--master", "local[*]", "--class", "tic.Transform2", ctx["assemblyPath"],
-                         "--mapping_input_file", ctx["mappingInputFilePath"], "--data_input_file", ctx["dataInputFilePath"],
-                         "--data_dictionary_input_file", ctx["dataDictionaryInputFilePath"],
-                         "--auxiliary_dir", ctx["auxiliaryDir"],
-                         "--filter_dir", ctx["filterDir"],
-                         "--block_dir", ctx["blockDir"],
-                         "--output_dir", ctx["outputDirPath"]])
+    # logger.info("THIS IS THE FILE THAT IS GOING TO BE READ", ctx["dataInputFilePath"])
+    cp = subprocess.run(
+        [
+            "spark-submit",
+            "--driver-memory",
+            ctx["sparkDriverMemory"],
+            "--executor-memory",
+            ctx["sparkExecutorMemory"],
+            "--master",
+            "local[*]",
+            "--class",
+            "tic.Transform2",
+            ctx["assemblyPath"],
+            "--mapping_input_file",
+            ctx["mappingInputFilePath"],
+            "--data_input_file",
+            ctx["dataInputFilePath"],
+            "--data_dictionary_input_file",
+            ctx["dataDictionaryInputFilePath"],
+            "--auxiliary_dir",
+            ctx["auxiliaryDir"],
+            "--filter_dir",
+            ctx["filterDir"],
+            "--block_dir",
+            ctx["blockDir"],
+            "--output_dir",
+            ctx["outputDirPath"],
+        ]
+    )
     if cp.returncode != 0:
         logger.error("pipeline encountered an error: " + str(cp.returncode))
         return False
     else:
         return True
 
-    
+
 def downloadData(ctx):
     data = {
-        "token" : ctx["redcapApplicationToken"],
-        "content" : "record",
-        "format" : "json",
-        "type" : "flat",
+        "token": ctx["redcapApplicationToken"],
+        "content": "record",
+        "format": "json",
+        "type": "flat",
         # "records[0]" : "1",
         # fields[0]=
-        "rawOrLabel" : "raw",
-        "rawOrLabelHeaders" : "raw",
-        "exportCheckboxLabel" : "false",
-        "exportSurveyFields" : "false",
-        "exportDataAccessGroups" : "false",
-        "returnFormat" : "json"
+        "rawOrLabel": "raw",
+        "rawOrLabelHeaders": "raw",
+        "exportCheckboxLabel": "false",
+        "exportSurveyFields": "false",
+        "exportDataAccessGroups": "false",
+        "returnFormat": "json",
     }
     headers = {
-        "Content-Type" : "application/x-www-form-urlencoded",
-        "Accept" : "application/json"
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Accept": "application/json",
     }
     download(ctx, headers, data, ctx["dataInputFilePath"])
 
 
 def downloadDataDictionary(ctx):
     data = {
-        "token" : ctx["redcapApplicationToken"],
-        "content" : "metadata",
-        "format" : "json",
-        "returnFormat" : "json"
+        "token": ctx["redcapApplicationToken"],
+        "content": "metadata",
+        "format": "json",
+        "returnFormat": "json",
     }
     headers = {
-        "Content-Type" : "application/x-www-form-urlencoded",
-        "Accept" : "application/json"
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Accept": "application/json",
     }
     download(ctx, headers, data, ctx["dataDictionaryInputFilePath"])
 
@@ -514,7 +694,8 @@ def context():
         "redcapURLBase": os.environ["REDCAP_URL_BASE"],
         "assemblyPath": "TIC preprocessing-assembly.jar",
         "mappingInputFilePath": "mapping.json",
-        "dataInputFilePath": "redcap_export.json",
+        "downloadRedcapData": os.getenv("DOWNLOAD_REDCAP_DATA") if os.getenv("DOWNLOAD_REDCAP_DATA") is not None else True,
+        "dataInputFilePath": os.getenv("DATA_INPUT_FILE_PATH") or "redcap_export.json",
         "dataDictionaryInputFilePath": "redcap_data_dictionary_export.json",
         "auxiliaryDir": os.environ["AUXILIARY_PATH"],
         "filterDir": os.environ["FILTER_PATH"],
@@ -529,7 +710,7 @@ def context():
         "redisLockExpire": os.environ["REDIS_LOCK_EXPIRE"],
         "redisLockTimeout": os.environ["REDIS_LOCK_TIMEOUT"],
         "sparkDriverMemory": os.environ["SPARK_DRIVER_MEMORY"],
-        "sparkExecutorMemory": os.environ["SPARK_EXECUTOR_MEMORY"]        
+        "sparkExecutorMemory": os.environ["SPARK_EXECUTOR_MEMORY"],
     }
 
 
@@ -545,53 +726,67 @@ def runPipeline(ctx):
 
 
 def _runPipeline(ctx):
-        if ctx["reloaddb"]:
+    if ctx["reloaddb"]:
+        logger.info(f"ctx['downloadRedcapData'] {ctx['downloadRedcapData']}")
+        if int(ctx["downloadRedcapData"]):
+            logger.info(f"Downloading data. Using {ctx['dataInputFilePath']}")
             downloadData(ctx)
-            downloadDataDictionary(ctx)
-        if not backUpDataDictionary(ctx):
-            return False
+        downloadDataDictionary(ctx)
+    if not backUpDataDictionary(ctx):
+        return False
 
-        if not etl(ctx):
-            return False
+    if not etl(ctx):
+        return False
 
-        ts = str(datetime.datetime.now())
-        if not _backUpDatabase(ctx, ts):
-            return False
-        
-        return _syncDatabase(ctx)
+    ts = str(datetime.datetime.now())
+    if not _backUpDatabase(ctx, ts):
+        return False
+
+    return _syncDatabase(ctx)
 
 
-def entrypoint(ctx, create_tables=None, insert_data=None, reload=None, one_off=None, schedule_run_time=None):
+def entrypoint(
+    ctx,
+    create_tables=None,
+    insert_data=None,
+    reload=None,
+    one_off=None,
+    schedule_run_time=None,
+):
     waitForDatabaseToStart(ctx["dbhost"], int(ctx["dbport"]))
     waitForRedisToStart(ctx["redisQueueHost"], int(ctx["redisQueuePort"]))
     waitForRedisToStart(ctx["redisLockHost"], int(ctx["redisLockPort"]))
-    logger.info("create_tables="+str(create_tables))
-    logger.info("insert_data="+str(insert_data))
-    logger.info("one_off="+str(one_off))
-    logger.info("realod="+str(reload))
+    logger.info("create_tables=" + str(create_tables))
+    logger.info("insert_data=" + str(insert_data))
+    logger.info("one_off=" + str(one_off))
+    logger.info("reload=" + str(reload))
     with Lock(G_LOCK):
         if create_tables:
             try:
                 _createTables(ctx)
             except Exception as e:
-                logger.error("pipeline encountered an error when creating tables" + str(e))
+                logger.error(
+                    "pipeline encountered an error when creating tables" + str(e)
+                )
 
         if insert_data:
             try:
                 _insertData(ctx)
             except Exception as e:
-                logger.error("pipeline encountered an error when inserting data" + str(e))
+                logger.error(
+                    "pipeline encountered an error when inserting data" + str(e)
+                )
 
         if one_off:
             try:
                 _runPipeline(ctx)
             except Exception as e:
-                logger.error("pipeline encountered an error during one off run" + str(e))
-            
+                logger.error(
+                    "pipeline encountered an error during one off run" + str(e)
+                )
+
     if reload:
         schedule.every().day.at(schedule_run_time).do(lambda: runPipeline(ctx))
         while True:
             schedule.run_pending()
             time.sleep(1000)
-
-
