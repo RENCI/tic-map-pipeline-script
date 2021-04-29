@@ -26,7 +26,6 @@ class RedcapExport:
     }
 
     DATA: dict = {
-        "token": token,
         "content": "record",
         "format": "json",
         "type": "flat",
@@ -41,7 +40,13 @@ class RedcapExport:
     def get_proposal_ids(self) -> list:
         proposal_ids = requests.post(
             self.url,
-            data={**self.DATA, **{"fields": "proposal_id"}},
+            data={
+                **self.DATA,
+                **{
+                    "fields": "proposal_id",
+                    "token": self.token,
+                },
+            },
             headers=self.HEADERS,
             stream=False,
         )
@@ -56,7 +61,10 @@ class RedcapExport:
             self.url,
             data={
                 **data,
-                **{"filterLogic": f"[proposal_id]>={gte_proposal_id} && [proposal_id]<={lte_proposal_id}"},
+                **{
+                    "filterLogic": f"[proposal_id]>={gte_proposal_id} && [proposal_id]<={lte_proposal_id}",
+                    "token": self.token,
+                },
             },
             headers=self.HEADERS,
             stream=False,
