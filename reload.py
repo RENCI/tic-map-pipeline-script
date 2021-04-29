@@ -1,32 +1,32 @@
+import csv
+import datetime
+import filecmp
+import functools
+import json
+import logging
 import os
+import shutil
+import socket
+import stat
 import subprocess
 import sys
-from psycopg2 import connect
-import schedule
-import time
-import requests
-import stat
-import datetime
-from pathlib import Path
-import filecmp
-import shutil
-import json
-from multiprocessing import Process
-import logging
-from pathlib import Path
-from stat import S_ISREG, ST_MTIME, ST_MODE
-from flask import Flask, request
-import sherlock
-from sherlock import Lock
-import redis
-from rq import Queue, Worker, Connection
-import socket
 import tempfile
-import csv
-from tx.functional.either import Left, Right
-import functools
-import utils
+import time
+from multiprocessing import Process
+from pathlib import Path
+from stat import S_ISREG, ST_MODE, ST_MTIME
 
+import redis
+import requests
+import schedule
+import sherlock
+from flask import Flask, request
+from psycopg2 import connect
+from rq import Connection, Queue, Worker
+from sherlock import Lock
+from tx.functional.either import Left, Right
+
+import utils
 
 sherlock.configure(
     backend=sherlock.backends.REDIS,
@@ -64,9 +64,7 @@ def waitForDatabaseToStart(host, port):
             s.close()
             break
         except socket.error as ex:
-            logger.info(
-                "waiting for database to start host=" + host + " port=" + str(port)
-            )
+            logger.info("waiting for database to start host=" + host + " port=" + str(port))
             time.sleep(1)
     logger.info("database started host=" + host + " port=" + str(port))
 
@@ -79,9 +77,7 @@ def waitForRedisToStart(host, port):
             s.ping()
             break
         except socket.error as ex:
-            logger.info(
-                "waiting for redis to start host=" + host + " port=" + str(port)
-            )
+            logger.info("waiting for redis to start host=" + host + " port=" + str(port))
             time.sleep(1)
     logger.info("redis started host=" + host + " port=" + str(port))
 
@@ -89,17 +85,7 @@ def waitForRedisToStart(host, port):
 def pgpass(ctx):
     home = str(Path.home())
     with open(home + "/.pgpass", "w+") as f:
-        f.write(
-            ctx["dbhost"]
-            + ":"
-            + ctx["dbport"]
-            + ":"
-            + ctx["dbname"]
-            + ":"
-            + ctx["dbuser"]
-            + ":"
-            + ctx["dbpass"]
-        )
+        f.write(ctx["dbhost"] + ":" + ctx["dbport"] + ":" + ctx["dbname"] + ":" + ctx["dbuser"] + ":" + ctx["dbpass"])
     os.chmod(home + "/.pgpass", stat.S_IREAD | stat.S_IWRITE)
 
 
@@ -223,21 +209,15 @@ def dataDictionaryBackUpDirectory(ctx):
 
 def backUpDataDictionary(ctx):
     data_dictionary_backup_dir = dataDictionaryBackUpDirectory(ctx)
-    data_dictionary_backup_path = (
-        data_dictionary_backup_dir + "/redcap_data_dictionary_export.json"
-    )
+    data_dictionary_backup_path = data_dictionary_backup_dir + "/redcap_data_dictionary_export.json"
     do_backup = False
     if os.path.isfile(ctx["dataDictionaryInputFilePath"]):
         if not os.path.isfile(data_dictionary_backup_path):
             do_backup = True
-        elif not filecmp.cmp(
-            ctx["dataDictionaryInputFilePath"], data_dictionary_backup_path
-        ):
+        elif not filecmp.cmp(ctx["dataDictionaryInputFilePath"], data_dictionary_backup_path):
             logger.info(data_dictionary_backup_path + " is a file")
             mtime = os.path.getmtime(data_dictionary_backup_path)
-            shutil.copy(
-                data_dictionary_backup_path, data_dictionary_backup_path + str(mtime)
-            )
+            shutil.copy(data_dictionary_backup_path, data_dictionary_backup_path + str(mtime))
             do_backup = True
         if do_backup:
             if not os.path.exists(data_dictionary_backup_dir):
@@ -255,6 +235,16 @@ def download(ctx, headers, data, output):
         for chunk in r.iter_content(chunk_size=8192):
             if chunk:  # filter out keep-alive new chunks
                 f.write(chunk)
+
+
+def downloadRedcapData(ctx, token, output):
+    if os.path.isfile(output):
+        os.remove(output)
+    logger.info("downloading Redcap Data")
+    r = RedcapExport(token, ctx["redcapURLBase"])
+    proposal_ids = r.get_proposal_ids()
+    proposals = r.get_proposals(r.chunk_proposals(proposal_ids))
+    r.write_to_file(proposals, output)
 
 
 def createTables(ctx):
@@ -367,14 +357,7 @@ def _insertDataIntoTable(ctx, table, f, kvp):
             [
                 "csvsql",
                 "--db",
-                "postgresql://"
-                + ctx["dbuser"]
-                + ":"
-                + ctx["dbpass"]
-                + "@"
-                + ctx["dbhost"]
-                + "/"
-                + ctx["dbname"],
+                "postgresql://" + ctx["dbuser"] + ":" + ctx["dbpass"] + "@" + ctx["dbhost"] + "/" + ctx["dbname"],
                 "--insert",
                 "--no-create",
                 "-d",
@@ -391,14 +374,7 @@ def _insertDataIntoTable(ctx, table, f, kvp):
         kvp,
     )
     if cp.returncode != 0:
-        logger.error(
-            "error inserting data into table "
-            + table
-            + " "
-            + f
-            + " "
-            + str(cp.returncode)
-        )
+        logger.error("error inserting data into table " + table + " " + f + " " + str(cp.returncode))
         return False
     return True
 
@@ -554,9 +530,7 @@ def _updateDataIntoTableColumn(ctx, table, column, f, kvp):
             row2 = row + add_data
             val = fn(row2[index])
             if val not in updated:
-                cursor.execute(
-                    'delete from "{0}" where "{1}" = %s'.format(table, column), (val,)
-                )
+                cursor.execute('delete from "{0}" where "{1}" = %s'.format(table, column), (val,))
                 updated.add(val)
 
     cursor.close()
@@ -580,9 +554,7 @@ def readDataFromTable(ctx, table):
     rows = cursor.fetchall()
     cursor.close()
     conn.close()
-    return [
-        {colname: str(cell) for colname, cell in zip(colnames, row)} for row in rows
-    ]
+    return [{colname: str(cell) for colname, cell in zip(colnames, row)} for row in rows]
 
 
 def syncDatabase(ctx):
@@ -659,7 +631,7 @@ def downloadData(ctx):
         "Content-Type": "application/x-www-form-urlencoded",
         "Accept": "application/json",
     }
-    download(ctx, headers, data, ctx["dataInputFilePath"])
+    downloadRedcapData(ctx, token, ctx["dataInputFilePath"])
 
 
 def downloadDataDictionary(ctx):
@@ -765,25 +737,19 @@ def entrypoint(
             try:
                 _createTables(ctx)
             except Exception as e:
-                logger.error(
-                    "pipeline encountered an error when creating tables" + str(e)
-                )
+                logger.error("pipeline encountered an error when creating tables" + str(e))
 
         if insert_data:
             try:
                 _insertData(ctx)
             except Exception as e:
-                logger.error(
-                    "pipeline encountered an error when inserting data" + str(e)
-                )
+                logger.error("pipeline encountered an error when inserting data" + str(e))
 
         if one_off:
             try:
                 _runPipeline(ctx)
             except Exception as e:
-                logger.error(
-                    "pipeline encountered an error during one off run" + str(e)
-                )
+                logger.error("pipeline encountered an error during one off run" + str(e))
 
     if reload:
         schedule.every().day.at(schedule_run_time).do(lambda: runPipeline(ctx))
