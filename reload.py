@@ -576,7 +576,6 @@ def etl(ctx):
     if os.path.isdir("data/tables"):
         for f in os.listdir("data/tables"):
             os.remove("data/tables/" + f)
-    # logger.info("THIS IS THE FILE THAT IS GOING TO BE READ", ctx["dataInputFilePath"])
     cp = subprocess.run(
         [
             "spark-submit",
