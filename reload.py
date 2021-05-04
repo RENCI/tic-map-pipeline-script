@@ -241,7 +241,7 @@ def downloadRedcapData(ctx, token, output):
     if os.path.isfile(output):
         os.remove(output)
     logger.info("downloading Redcap Data")
-    r = RedcapExport(token, ctx["redcapURLBase"])
+    r = utils.RedcapExport(token, ctx["redcapURLBase"])
     proposal_ids = r.get_proposal_ids()
     proposals = r.get_proposals(r.chunk_proposals(proposal_ids))
     r.write_to_file(proposals, output)
@@ -466,11 +466,11 @@ def validateTable(ctx, tablename, tfname, kvp):
         try:
             cursor.execute(
                 """
-select column_name, data_type
-from information_schema.columns
-where table_schema NOT IN ('information_schema', 'pg_catalog') and table_name=%s
-order by table_schema, table_name
-""",
+                select column_name, data_type
+                from information_schema.columns
+                where table_schema NOT IN ('information_schema', 'pg_catalog') and table_name=%s
+                order by table_schema, table_name
+                """,
                 (tablename,),
             )
             rows = cursor.fetchall()
@@ -631,7 +631,7 @@ def downloadData(ctx):
         "Content-Type": "application/x-www-form-urlencoded",
         "Accept": "application/json",
     }
-    downloadRedcapData(ctx, token, ctx["dataInputFilePath"])
+    downloadRedcapData(ctx, ctx["redcapApplicationToken"], ctx["dataInputFilePath"])
 
 
 def downloadDataDictionary(ctx):

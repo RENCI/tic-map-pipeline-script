@@ -1,7 +1,7 @@
 import json
 import logging
 
-from requests import Response
+import requests
 
 
 def getLogger(name):
@@ -19,6 +19,7 @@ class RedcapExport:
     def __init__(self, token: str, url: str):
         self.token = token
         self.url = url
+        self.batch_size = os.get.environ("BATCH_SIZE") or 10
 
     HEADERS: dict = {
         "Content-Type": "application/x-www-form-urlencoded",
@@ -42,10 +43,8 @@ class RedcapExport:
             self.url,
             data={
                 **self.DATA,
-                **{
-                    "fields": "proposal_id",
-                    "token": self.token,
-                },
+                "fields": "proposal_id",
+                "token": self.token,
             },
             headers=self.HEADERS,
             stream=False,
@@ -56,15 +55,13 @@ class RedcapExport:
         sorted_proposals = sorted(proposals, key=lambda k: int(k["proposal_id"]))
         return sorted_proposals
 
-    def iterate_over_batch(gte_proposal_id: str, lte_proposal_id: str) -> Response:
+    def iterate_over_batch(self, gte_proposal_id: str, lte_proposal_id: str) -> requests.Response:
         r = requests.post(
             self.url,
             data={
-                **data,
-                **{
-                    "filterLogic": f"[proposal_id]>={gte_proposal_id} && [proposal_id]<={lte_proposal_id}",
-                    "token": self.token,
-                },
+                **self.DATA,
+                "filterLogic": f"[proposal_id]>={gte_proposal_id} && [proposal_id]<={lte_proposal_id}",
+                "token": self.token,
             },
             headers=self.HEADERS,
             stream=False,
@@ -72,12 +69,12 @@ class RedcapExport:
         return r
 
     def chunk_proposals(self, proposals: list) -> list:
-        return [sorted_proposals[x : x + 10] for x in range(0, len(sorted_proposals), 10)]
+        return [proposals[x : x + self.batch_size] for x in range(0, len(proposals), self.batch_size)]
 
     def get_proposals(self, proposals: list) -> list:
         merged_proposals = []
         for chunk in proposals:
-            res = iterate_over_batch(chunk[0]["proposal_id"], chunk[-1]["proposal_id"])
+            res = self.iterate_over_batch(chunk[0]["proposal_id"], chunk[-1]["proposal_id"])
             if res.status_code != 200:
                 # Consider raising an exception
                 logger.info("Request failed to get Redcap data")
@@ -86,6 +83,6 @@ class RedcapExport:
         flat_list = [item for sublist in merged_proposals for item in sublist]
         return flat_list
 
-    def write_to_file(data, output):
+    def write_to_file(self, data, output):
         with open(output, "w") as outfile:
             json.dump(data, outfile)
