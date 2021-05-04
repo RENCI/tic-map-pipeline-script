@@ -418,10 +418,10 @@ def getColumnDataType(ctx, table, column):
     cursor = conn.cursor()
     cursor.execute(
         """
-select data_type
-from information_schema.columns
-where table_schema NOT IN ('information_schema', 'pg_catalog') and table_name=%s and column_name=%s
-order by table_schema, table_name
+        select data_type
+        from information_schema.columns
+        where table_schema NOT IN ('information_schema', 'pg_catalog') and table_name=%s and column_name=%s
+        order by table_schema, table_name
     """,
         (table, column),
     )
