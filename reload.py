@@ -618,8 +618,6 @@ def downloadData(ctx):
         "content": "record",
         "format": "json",
         "type": "flat",
-        # "records[0]" : "1",
-        # fields[0]=
         "rawOrLabel": "raw",
         "rawOrLabelHeaders": "raw",
         "exportCheckboxLabel": "false",
