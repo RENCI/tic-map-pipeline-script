@@ -1,35 +1,39 @@
+import csv
+import datetime
+import filecmp
+import json
+import logging
 import os
+import shutil
+import stat
 import subprocess
 import sys
-import schedule
+import tempfile
 import time
-import requests
-import stat
-import datetime
-from pathlib import Path
-import filecmp
-import shutil
-import json
 from multiprocessing import Process
 from pathlib import Path
-from stat import S_ISREG, ST_MTIME, ST_MODE
-from flask import Flask, request
+from stat import S_ISREG, ST_MODE, ST_MTIME
+
 import redis
+import requests
+import schedule
+from flask import Flask, request
 from rq import Queue
-from rq.registry import StartedJobRegistry, FinishedJobRegistry, FailedJobRegistry, DeferredJobRegistry
-import tempfile
-import logging
-import csv
+from rq.registry import DeferredJobRegistry, FailedJobRegistry, FinishedJobRegistry, StartedJobRegistry
 from tx.functional.either import Left, Right
+
 import reload
 import utils
 
-redis_conn = redis.StrictRedis(host=os.environ["REDIS_QUEUE_HOST"], port=int(os.environ["REDIS_QUEUE_PORT"]), db=int(os.environ["REDIS_QUEUE_DB"]))
+redis_conn = redis.StrictRedis(
+    host=os.environ["REDIS_QUEUE_HOST"], port=int(os.environ["REDIS_QUEUE_PORT"]), db=int(os.environ["REDIS_QUEUE_DB"])
+)
 q = Queue(connection=redis_conn)
 
-TASK_TIME=int(os.environ["TASK_TIME"])
+TASK_TIME = int(os.environ["TASK_TIME"])
 
 logger = utils.getLogger(__name__)
+
 
 def handleTableFunc(handler, args, tfname):
     try:
@@ -37,16 +41,17 @@ def handleTableFunc(handler, args, tfname):
     finally:
         os.unlink(tfname)
 
+
 def server(ctx):
     app = Flask(__name__)
 
-    @app.route("/backup", methods=['GET', 'POST'])
+    @app.route("/backup", methods=["GET", "POST"])
     def backup():
-        if request.method == 'GET':
+        if request.method == "GET":
             return getBackup(ctx)
         else:
             return postBackup(ctx)
-        
+
     def getBackup(ctx):
         dirpath = ctx["backupDir"]
         entries = ((os.path.join(dirpath, fn), fn) for fn in os.listdir(dirpath))
@@ -54,9 +59,9 @@ def server(ctx):
         entries = ((stat[ST_MTIME], fn) for stat, fn in entries if S_ISREG(stat[ST_MODE]))
         entries = (fn for _, fn in sorted(entries, reverse=True))
         entries = list(entries)
-                          
+
         return json.dumps(entries)
-    
+
     def postBackup(ctx):
         ts = str(datetime.datetime.now())
         pBackup = q.enqueue(reload.backUpDatabase, args=[ctx, ts], job_timeout=TASK_TIME)
@@ -64,19 +69,17 @@ def server(ctx):
 
     @app.route("/backup/<string:ts>", methods=["DELETE"])
     def deleteBackup(ts):
-        pDeleteBackup = q.enqueue(reload.deleteBackup, args=[ctx, ts], job_timeout=TASK_TIME)        
+        pDeleteBackup = q.enqueue(reload.deleteBackup, args=[ctx, ts], job_timeout=TASK_TIME)
         return json.dumps(pDeleteBackup.id)
-    
-    @app.route("/restore/<string:ts>", methods=['POST'])
+
+    @app.route("/restore/<string:ts>", methods=["POST"])
     def restore(ts):
         pRestore = q.enqueue(reload.restoreDatabase, args=[ctx, ts], job_timeout=TASK_TIME)
         return json.dumps(pRestore.id)
-    
-    @app.route("/sync", methods=['POST'])
+
+    @app.route("/sync", methods=["POST"])
     def sync():
-        pSync = q.enqueue(reload.entrypoint, args=[ctx], kwargs={
-            "one_off": True
-        }, job_timeout=TASK_TIME)
+        pSync = q.enqueue(reload.entrypoint, args=[ctx], kwargs={"one_off": True}, job_timeout=TASK_TIME)
         return json.dumps(pSync.id)
 
     def uploadFile():
@@ -117,7 +120,7 @@ def server(ctx):
             os.unlink(tfname)
             logger.error("exception " + str(e))
             raise
-        
+
     @app.route("/table/<string:tablename>", methods=["GET", "POST", "PUT"])
     def table(tablename):
         if request.method == "GET":
@@ -129,22 +132,24 @@ def server(ctx):
         else:
             logger.info("post table")
             return handleTable(reload.insertDataIntoTable, ctx, tablename)
-            
+
     def handleTable(handler, ctx, tablename, *args):
         tfname, kvp = uploadFile()
         ret = reload.validateTable(ctx, tablename, tfname, kvp)
         if isinstance(ret, Left):
             return ret.value, 405
-        else:    
-            pTable = q.enqueue(handleTableFunc, args=[handler, [ctx, tablename, *args, tfname, kvp], tfname], job_timeout=TASK_TIME)
-            return json.dumps(pTable.id)            
+        else:
+            pTable = q.enqueue(
+                handleTableFunc, args=[handler, [ctx, tablename, *args, tfname, kvp], tfname], job_timeout=TASK_TIME
+            )
+            return json.dumps(pTable.id)
 
     @app.route("/table/<string:tablename>/column/<string:columnname>", methods=["POST"])
     def tableColumn(tablename, columnname):
         if request.method == "POST":
             logger.info("post incremental update table")
             return handleTable(reload.updateDataIntoTableColumn, ctx, tablename, columnname)
-            
+
     @app.route("/task", methods=["GET"])
     def task():
         startedjr = StartedJobRegistry("default", connection=redis_conn)
@@ -157,14 +162,17 @@ def server(ctx):
                 "job_ids": jr.get_job_ids(),
                 "expired_job_ids": jr.get_expired_job_ids(),
             }
-        return json.dumps({
-            "queued": q.job_ids,
-            "started": job_registry_to_json(startedjr),
-            "finished": job_registry_to_json(finishedjr),
-            "failed": job_registry_to_json(failedjr),
-            "deferred": job_registry_to_json(deferredjr)
-        })
-            
+
+        return json.dumps(
+            {
+                "queued": q.job_ids,
+                "started": job_registry_to_json(startedjr),
+                "finished": job_registry_to_json(finishedjr),
+                "failed": job_registry_to_json(failedjr),
+                "deferred": job_registry_to_json(deferredjr),
+            }
+        )
+
     @app.route("/task/<string:taskid>", methods=["GET", "DELETE"])
     def taskId(taskid):
         if request.method == "GET":
@@ -174,17 +182,19 @@ def server(ctx):
 
     def getTaskId(taskid):
         job = q.fetch_job(taskid)
-        return json.dumps({
-            "status": job.get_status(),
-            "name": job.func_name,
-            "created_at": str(job.created_at),
-            "enqueued_at": str(job.enqueued_at),
-            "started_at": str(job.started_at),
-            "ended_at": str(job.ended_at),
-            "description": job.description,
-            "result": str(job.result)
-        })
-    
+        return json.dumps(
+            {
+                "status": job.get_status(),
+                "name": job.func_name,
+                "created_at": str(job.created_at),
+                "enqueued_at": str(job.enqueued_at),
+                "started_at": str(job.started_at),
+                "ended_at": str(job.ended_at),
+                "description": job.description,
+                "result": str(job.result),
+            }
+        )
+
     def deleteTaskId(taskid):
         job = q.fetch_job(taskid)
         job.cancel()
