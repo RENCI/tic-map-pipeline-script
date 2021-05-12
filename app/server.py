@@ -18,12 +18,13 @@ import redis
 import requests
 import schedule
 from flask import Flask, request
+from flask_cors import CORS
 from rq import Queue
 from rq.registry import DeferredJobRegistry, FailedJobRegistry, FinishedJobRegistry, StartedJobRegistry
 from tx.functional.either import Left, Right
 
-import reload
-import utils
+from app import reload, utils
+from app.utils import getLogger
 
 redis_conn = redis.StrictRedis(
     host=os.environ["REDIS_QUEUE_HOST"], port=int(os.environ["REDIS_QUEUE_PORT"]), db=int(os.environ["REDIS_QUEUE_DB"])
@@ -32,7 +33,7 @@ q = Queue(connection=redis_conn)
 
 TASK_TIME = int(os.environ["TASK_TIME"])
 
-logger = utils.getLogger(__name__)
+logger = getLogger(__name__)
 
 
 def handleTableFunc(handler, args, tfname):
@@ -44,6 +45,7 @@ def handleTableFunc(handler, args, tfname):
 
 def server(ctx):
     app = Flask(__name__)
+    CORS(app)
 
     @app.route("/backup", methods=["GET", "POST"])
     def backup():
@@ -91,7 +93,7 @@ def server(ctx):
             tfname2 = tf2.name
             f = request.files["data"]
             if request.form["content-type"] == "application/json":
-                j = json.load(f)
+                j = json.loads(f.read().decode("utf-8"))
                 with open(tfname, "w", newline="", encoding="utf-8") as tfi:
                     writer = csv.writer(tfi)
                     if len(j) == 0:
@@ -135,10 +137,13 @@ def server(ctx):
 
     def handleTable(handler, ctx, tablename, *args):
         tfname, kvp = uploadFile()
+        logger.info("Validating table")
         ret = reload.validateTable(ctx, tablename, tfname, kvp)
         if isinstance(ret, Left):
+            logger.info(f"Table NOT {tablename} validated")
             return ret.value, 405
         else:
+            logger.info(f"Table {tablename} validated")
             pTable = q.enqueue(
                 handleTableFunc, args=[handler, [ctx, tablename, *args, tfname, kvp], tfname], job_timeout=TASK_TIME
             )
@@ -148,7 +153,17 @@ def server(ctx):
     def tableColumn(tablename, columnname):
         if request.method == "POST":
             logger.info("post incremental update table")
-            return handleTable(reload.updateDataIntoTableColumn, ctx, tablename, columnname)
+            if request.files:
+                logger.info("Handling file upload")
+                return handleTable(reload.updateDataIntoTableColumn, ctx, tablename, columnname)
+            else:
+                logger.info("Handling json data post")
+                pTable = q.enqueue(
+                    reload.updateTable,
+                    args=[ctx, tablename, request.json, columnname],
+                    job_timeout=TASK_TIME,
+                )
+                return json.dumps(pTable.id)
 
     @app.route("/task", methods=["GET"])
     def task():

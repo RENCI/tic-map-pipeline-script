@@ -26,7 +26,10 @@ from rq import Connection, Queue, Worker
 from sherlock import Lock
 from tx.functional.either import Left, Right
 
-import utils
+from app.redcap import RedcapExport
+from app.utils import getLogger, check_for_dups
+from app.queries import column_headers
+from app.postgres import Postgres
 
 sherlock.configure(
     backend=sherlock.backends.REDIS,
@@ -52,7 +55,7 @@ def redisQueue():
 
 q = Queue(connection=redisQueue())
 
-logger = utils.getLogger(__name__)
+logger = getLogger(__name__)
 
 
 def waitForDatabaseToStart(host, port):
@@ -241,7 +244,7 @@ def downloadRedcapData(ctx, token, output):
     if os.path.isfile(output):
         os.remove(output)
     logger.info("downloading Redcap Data")
-    r = utils.RedcapExport(token, ctx["redcapURLBase"])
+    r = RedcapExport(token, ctx["redcapURLBase"])
     proposal_ids = r.get_proposal_ids()
     proposals = r.get_proposals(r.chunk_proposals(proposal_ids))
     r.write_to_file(proposals, output)
@@ -432,6 +435,23 @@ def getColumnDataType(ctx, table, column):
     return dt
 
 
+def updateTable(ctx, tablename, data, col_to_filter_on):
+    p = Postgres(user=ctx["dbuser"], password=ctx["dbpass"], host=ctx["dbhost"], dbname=ctx["dbname"])
+    result = p.query(column_headers, tablename)
+    headers = [val[0] for val in result]
+    keys_to_be_deleted = []
+    for key in data.keys():
+        if key not in headers:
+            keys_to_be_deleted.append(key)
+
+    for key in keys_to_be_deleted:
+        del data[key]
+
+    logger.info("COLUMNS BRO", headers)
+
+    p.update(tablename, data, col_to_filter_on)
+
+
 def validateTable(ctx, tablename, tfname, kvp):
     with open(tfname, "r", newline="", encoding="utf-8") as tfi:
         reader = csv.reader(tfi)
@@ -443,15 +463,11 @@ def validateTable(ctx, tablename, tfname, kvp):
             if n2 != n:
                 return Left(f"row {i} number of items, expected {n}, encountered {n2}")
             i += 1
-        seen = set()
-        dups = []
-        for x in header:
-            if x in seen:
-                dups.append(x)
-            else:
-                seen.add(x)
-        if len(dups) > 0:
-            return Left(f"duplicate header(s) in upload {dups}")
+
+        dup_headers, _ = check_for_dups(header)
+        if len(dup_headers) > 0:
+            return Left(f"duplicate header(s) in upload {dup_headers}")
+
         header2 = list(kvp.keys())
         i2 = [a for a in header if a in header2]
         if len(i2) > 0:
@@ -465,12 +481,7 @@ def validateTable(ctx, tablename, tfname, kvp):
         cursor = conn.cursor()
         try:
             cursor.execute(
-                """
-                select column_name, data_type
-                from information_schema.columns
-                where table_schema NOT IN ('information_schema', 'pg_catalog') and table_name=%s
-                order by table_schema, table_name
-                """,
+                column_headers,
                 (tablename,),
             )
             rows = cursor.fetchall()

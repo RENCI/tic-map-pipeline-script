@@ -25,6 +25,9 @@ RUN sbt assembly
 
 FROM ubuntu:20.04
 
+
+COPY ["app/requirements.txt", "requirements.txt"]
+
 RUN apt-get update && apt-get install -y wget curl
 
 RUN curl -sSL https://get.haskellstack.org/ | sh
@@ -33,23 +36,24 @@ WORKDIR map-pipeline-schema
 RUN stack build
 
 WORKDIR /
+
 RUN mkdir data
-
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y wget gnupg git tzdata
-
 RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ bionic-pgdg main" | tee -a /etc/apt/sources.list.d/pgdg.list
-
 RUN wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
-
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y python3-pip wget openjdk-8-jdk postgresql-client-11 libmemcached-dev
 
-
 RUN apt-get install pkg-config libicu-dev -y
-RUN pip3 install --no-binary=:pyicu: pyicu
-RUN pip3 install csvkit
 
-RUN pip3 install  schedule pandas psycopg2-binary  requests flask redis rq oslash==0.5.1 tx-functional
-RUN pip3 install git+https://github.com/vaidik/sherlock.git@77742ba91a24f75ee62e1895809901bde018654f
+# This needs to be installed like this to avoid bug with pyicu
+RUN pip3 install --no-binary=:pyicu: pyicu
+
+# Install requirements from file
+RUN pip3 install -r requirements.txt
+
+# RUN pip3 install csvkit
+# RUN pip3 install  schedule pandas psycopg2-binary  requests flask redis rq oslash==0.5.1 tx-functional flask_cors
+# RUN pip3 install git+https://github.com/vaidik/sherlock.git@77742ba91a24f75ee62e1895809901bde018654f
 
 RUN wget https://apache.claz.org/spark/spark-2.4.7/spark-2.4.7-bin-hadoop2.7.tgz  
 #&& echo "0F5455672045F6110B030CE343C049855B7BA86C0ECB5E39A075FF9D093C7F648DA55DED12E72FFE65D84C32DCD5418A6D764F2D6295A3F894A4286CC80EF478  spark-2.4.7-bin-hadoop2.7.tgz" | sha512sum -c -
@@ -74,11 +78,7 @@ ENV TZ=America/New_York
 
 COPY --from=transform ["map-pipeline/target/scala-2.11/TIC preprocessing-assembly-0.2.0.jar", "TIC preprocessing-assembly.jar"]
 
-COPY ["reload.py", "reload.py"]
-COPY ["server.py", "server.py"]
-COPY ["application.py", "application.py"]
-COPY ["utils.py", "utils.py"]
-# COPY ["test_data.json", "test_data.json"]
+COPY ["app/", "/app"]
 
-ENTRYPOINT ["python3", "application.py"]
+ENTRYPOINT ["python3", "-m", "app.application"]
 

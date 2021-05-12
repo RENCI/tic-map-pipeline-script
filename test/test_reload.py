@@ -1,29 +1,32 @@
-import reload
-import server
+import csv
+import datetime
 import filecmp
-from sqlalchemy import create_engine, text
+import json
 import os
 import os.path
-import shutil
-from multiprocessing import Process
-import datetime
-import requests
-import time
-from rq import Worker
-from psycopg2 import connect
-import pytest
-import json
-import csv
-import yaml
-from contextlib import contextmanager
 import re
+import shutil
 import sys
+import time
+from contextlib import contextmanager
+from multiprocessing import Process
 
-from test_utils import WAIT_PERIOD, bag_contains, bag_equal, wait_for_task_to_start, wait_for_task_to_finish
+import app.reload
+import app.server
+import pytest
+import requests
+import yaml
+from psycopg2 import connect
+from rq import Worker
+from sqlalchemy import create_engine, text
 
-@pytest.fixture(scope='function', autouse=True)
+from test_utils import WAIT_PERIOD, bag_contains, bag_equal, wait_for_task_to_finish, wait_for_task_to_start
+
+
+@pytest.fixture(scope="function", autouse=True)
 def test_log(request):
-    print("Test '{}' STARTED".format(request.node.nodeid)) # Here logging is used, you can use whatever you want to use for logs
+    # Here logging is used, you can use whatever you want to use for logs
+    print("Test '{}' STARTED".format(request.node.nodeid))
     sys.stdout.flush()
     try:
         yield
@@ -31,15 +34,16 @@ def test_log(request):
         print("Test '{}' COMPLETED".format(request.node.nodeid))
         sys.stdout.flush()
 
+
 def test_downloadData():
     ctx = reload.context()
     reload.downloadData(ctx)
     assert filecmp.cmp(ctx["dataInputFilePath"], "redcap/record.json")
     os.remove(ctx["dataInputFilePath"])
 
-    
+
 def test_downloadDataDictionary():
-    
+
     ctx = reload.context()
     reload.downloadDataDictionary(ctx)
     assert filecmp.cmp(ctx["dataDictionaryInputFilePath"], "redcap/metadata.json")
@@ -47,17 +51,29 @@ def test_downloadDataDictionary():
 
 
 def test_clear_database():
-    
+
     ctx = reload.context()
     reload.clearDatabase(ctx)
-    engine = create_engine("postgresql+psycopg2://" + ctx["dbuser"] + ":" + ctx["dbpass"] + "@" + ctx["dbhost"] + ":" + ctx["dbport"] + "/" + ctx["dbname"])
+    engine = create_engine(
+        "postgresql+psycopg2://"
+        + ctx["dbuser"]
+        + ":"
+        + ctx["dbpass"]
+        + "@"
+        + ctx["dbhost"]
+        + ":"
+        + ctx["dbport"]
+        + "/"
+        + ctx["dbname"]
+    )
     conn = engine.connect()
-            
-    rs = conn.execute("SELECT table_schema,table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_schema,table_name").fetchall()
+
+    rs = conn.execute(
+        "SELECT table_schema,table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_schema,table_name"
+    ).fetchall()
     assert len(rs) == 0
     conn.close()
     reload.createTables(ctx)
-
 
 
 @contextmanager
@@ -86,7 +102,7 @@ def datatables(nextvalue):
     finally:
         shutil.rmtree("/data/tables")
 
-    
+
 @contextmanager
 def connection(ctx, autocommit=False):
     conn = connect(user=ctx["dbuser"], password=ctx["dbpass"], host=ctx["dbhost"], port=ctx["dbport"], dbname=ctx["dbname"])
@@ -94,7 +110,7 @@ def connection(ctx, autocommit=False):
     try:
         yield conn
     finally:
-        conn.close()        
+        conn.close()
 
 
 @contextmanager
@@ -105,9 +121,9 @@ def database(ctx, cleanup=True):
         reload.clearDatabase(ctx)
         reload.createTables(ctx)
 
-        
+
 def test_etl():
-    
+
     ctx = reload.context()
     with copy_file("redcap/record.json", ctx["dataInputFilePath"]):
         with copy_file("redcap/metadata.json", ctx["dataDictionaryInputFilePath"]):
@@ -118,8 +134,8 @@ def test_etl():
                     assert sum(1 for _ in f) == 2
 
 
-def test_sync(cleanup = True):
-    
+def test_sync(cleanup=True):
+
     ctx = reload.context()
     with database(ctx, cleanup=cleanup):
         with connection(ctx, autocommit=True) as conn:
@@ -129,7 +145,7 @@ def test_sync(cleanup = True):
             assert len(rs) == 1
             for row in rs:
                 assert row[0] == 0
-            
+
             with copytree("/etlout", "/data/tables"):
                 print("sync database")
                 assert reload.syncDatabase(ctx)
@@ -142,7 +158,7 @@ def test_sync(cleanup = True):
 
 
 def test_entrypoint():
-    
+
     ctx = reload.context()
     with database(ctx):
         with connection(ctx, autocommit=True) as conn:
@@ -153,7 +169,7 @@ def test_entrypoint():
             for row in rs:
                 assert row[0] == 0
 
-            ctx["reloaddb"]=False
+            ctx["reloaddb"] = False
             with copy_file("redcap/record.json", ctx["dataInputFilePath"]):
                 with copy_file("redcap/metadata.json", ctx["dataDictionaryInputFilePath"]):
                     with datatables(lambda: reload.entrypoint(ctx, one_off=True)):
@@ -165,7 +181,7 @@ def test_entrypoint():
 
 
 def test_back_up_data_dictionary():
-    
+
     ctx = reload.context()
     with copy_file("redcap/metadata.json", ctx["dataDictionaryInputFilePath"]):
         assert reload.backUpDataDictionary(ctx)
@@ -174,7 +190,7 @@ def test_back_up_data_dictionary():
 
 
 def test_back_up_data_dictionary_not_exists():
-    
+
     ctx = reload.context()
     assert reload.backUpDataDictionary(ctx)
     directory = reload.dataDictionaryBackUpDirectory(ctx)
@@ -183,7 +199,7 @@ def test_back_up_data_dictionary_not_exists():
 
 
 def test_back_up_data_dictionary_makedirs_exists():
-    
+
     ctx = reload.context()
     directory = reload.dataDictionaryBackUpDirectory(ctx)
     os.makedirs(directory)
@@ -197,10 +213,10 @@ def test_back_up_database(cleanup=True):
     ctx = reload.context()
     with database(ctx, cleanup=cleanup):
         test_sync(False)
-    
+
         ts = str(datetime.datetime.now())
         assert reload._backUpDatabase(ctx, ts)
-        assert(ts in os.listdir(ctx["backupDir"]))
+        assert ts in os.listdir(ctx["backupDir"])
         if cleanup:
             os.remove(ctx["backupDir"] + "/" + ts)
         else:
@@ -210,7 +226,7 @@ def test_back_up_database(cleanup=True):
 def test_delete_back_up_database():
     print("test_back_up_database")
     test_sync(False)
-    
+
     ctx = reload.context()
     with database(ctx, cleanup=True):
         ts = str(datetime.datetime.now())
@@ -225,7 +241,7 @@ def test_restore_database():
     ctx = reload.context()
     with database(ctx, cleanup=True):
         ts = test_back_up_database(False)
-    
+
     with database(ctx, cleanup=True):
         assert reload._restoreDatabase(ctx, ts)
         os.remove(ctx["backupDir"] + "/" + ts)
@@ -234,12 +250,12 @@ def test_restore_database():
 def test_back_up_database_with_lock(cleanup=True):
     print("test_back_up_database")
     test_sync(False)
-    
+
     ctx = reload.context()
     with database(ctx, cleanup=cleanup):
         ts = str(datetime.datetime.now())
         assert reload.backUpDatabase(ctx, ts)
-        assert(ts in os.listdir(ctx["backupDir"]))
+        assert ts in os.listdir(ctx["backupDir"])
         if cleanup:
             os.remove(ctx["backupDir"] + "/" + ts)
         else:
@@ -252,16 +268,16 @@ def test_restore_database_with_lock():
     ctx = reload.context()
     with database(ctx, cleanup=True):
         ts = test_back_up_database(False)
-    
+
     with database(ctx, cleanup=True):
         assert reload.restoreDatabase(ctx, ts)
         os.remove(ctx["backupDir"] + "/" + ts)
 
 
 def test_sync_endpoint():
-    
+
     ctx = reload.context()
-    p = Process(target = server.server, args=[ctx], kwargs={})
+    p = Process(target=server.server, args=[ctx], kwargs={})
     p.start()
     time.sleep(WAIT_PERIOD)
     try:
@@ -273,11 +289,11 @@ def test_sync_endpoint():
         p.terminate()
         reload.clearTasks()
 
-    
+
 def test_back_up_endpoint():
-    
+
     ctx = reload.context()
-    p = Process(target = server.server, args=[ctx], kwargs={})
+    p = Process(target=server.server, args=[ctx], kwargs={})
     p.start()
     time.sleep(WAIT_PERIOD)
     try:
@@ -291,9 +307,9 @@ def test_back_up_endpoint():
 
 
 def test_task():
-    
+
     ctx = reload.context()
-    p = Process(target = server.server, args=[ctx], kwargs={})
+    p = Process(target=server.server, args=[ctx], kwargs={})
     p.start()
     time.sleep(WAIT_PERIOD)
     try:
@@ -314,9 +330,9 @@ def test_task():
 
 
 def test_get_task():
-    
+
     ctx = reload.context()
-    p = Process(target = server.server, args=[ctx], kwargs={})
+    p = Process(target=server.server, args=[ctx], kwargs={})
     p.start()
     time.sleep(WAIT_PERIOD)
     try:
@@ -337,9 +353,9 @@ def test_get_task():
 
 
 def test_get_all_tasks():
-    
+
     ctx = reload.context()
-    pServer = Process(target = server.server, args=[ctx], kwargs={})
+    pServer = Process(target=server.server, args=[ctx], kwargs={})
     print("starting server ctx = " + str(ctx))
     pServer.start()
     print("server started, waiting for " + str(WAIT_PERIOD))
@@ -351,7 +367,7 @@ def test_get_all_tasks():
     print("creating tables")
     reload.createTables(ctx)
     print("starting worker")
-    pWorker = Process(target = reload.startWorker)
+    pWorker = Process(target=reload.startWorker)
     pWorker.start()
     print("worker started, waiting for " + str(WAIT_PERIOD))
     time.sleep(WAIT_PERIOD)
@@ -365,25 +381,13 @@ def test_get_all_tasks():
         resp2 = requests.get("http://localhost:5000/task")
         assert resp2.json() == {
             "queued": [],
-            "started": {
-                "job_ids": [task_id],
-                "expired_job_ids": []
-            },
-            "finished": {
-                "job_ids": [],
-                "expired_job_ids": []
-            },
-            "failed": {
-                "job_ids": [],
-                "expired_job_ids": []
-            },
-            "deferred": {
-                "job_ids": [],
-                "expired_job_ids": []
-            }
+            "started": {"job_ids": [task_id], "expired_job_ids": []},
+            "finished": {"job_ids": [], "expired_job_ids": []},
+            "failed": {"job_ids": [], "expired_job_ids": []},
+            "deferred": {"job_ids": [], "expired_job_ids": []},
         }
     finally:
-        pWorker.terminate() 
+        pWorker.terminate()
         pServer.terminate()
         reload.clearTasks()
         reload.clearDatabase(ctx)
@@ -391,9 +395,9 @@ def test_get_all_tasks():
 
 
 def test_delete_task():
-    
+
     ctx = reload.context()
-    p = Process(target = server.server, args=[ctx], kwargs={})
+    p = Process(target=server.server, args=[ctx], kwargs={})
     p.start()
     time.sleep(WAIT_PERIOD)
     try:
@@ -416,9 +420,9 @@ def test_delete_task():
 
 
 def test_start_worker():
-    
+
     ctx = reload.context()
-    p = Process(target = reload.startWorker)
+    p = Process(target=reload.startWorker)
     workers = Worker.all(connection=reload.redisQueue())
     assert len(list(workers)) == 0
     p.start()
@@ -429,7 +433,7 @@ def test_start_worker():
 
 
 def do_test_auxiliary(aux1, exp):
-    
+
     aux0 = os.environ.get("AUXILIARY_PATH")
     os.environ["AUXILIARY_PATH"] = aux1
     ctx = reload.context()
@@ -461,7 +465,7 @@ def test_auxiliary3():
 
 
 def do_test_filter(aux1, exp):
-    
+
     aux0 = os.environ.get("FILTER_PATH")
     os.environ["FILTER_PATH"] = aux1
     ctx = reload.context()
@@ -493,9 +497,9 @@ def test_filter2():
 def test_filter3():
     do_test_filter("filter3", 1)
 
-    
+
 def do_test_blocklist(blocklist1, exp):
-    
+
     blocklist0 = os.environ.get("BLOCK_PATH")
     os.environ["BLOCK_PATH"] = blocklist1
     ctx = reload.context()
@@ -517,7 +521,7 @@ def do_test_blocklist(blocklist1, exp):
 
 
 def do_test_blocklist2(blocklist1, exp):
-    
+
     blocklist0 = os.environ.get("BLOCK_PATH")
     os.environ["BLOCK_PATH"] = blocklist1
     ctx = reload.context()
@@ -540,24 +544,23 @@ def do_test_blocklist2(blocklist1, exp):
 
 def test_blocklist1():
     do_test_blocklist("block1", 0)
-    
+
 
 def test_blocklist2():
     do_test_blocklist("block2", 1)
-    
+
 
 def test_blocklist3():
     do_test_blocklist("block3", 0)
 
-    
+
 def test_blocklist4():
     do_test_blocklist2("block1", 0)
-    
+
 
 def test_blocklist5():
     do_test_blocklist2("block2", 1)
-    
+
 
 def test_blocklist6():
     do_test_blocklist2("block3", 0)
-

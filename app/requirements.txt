@@ -1,0 +1,12 @@
+csvkit
+schedule
+pandas
+psycopg2-binary 
+requests
+flask
+redis
+rq
+oslash==0.5.1
+tx-functional
+flask_cors # Remove this dep
+git+https://github.com/vaidik/sherlock.git@77742ba91a24f75ee62e1895809901bde018654f

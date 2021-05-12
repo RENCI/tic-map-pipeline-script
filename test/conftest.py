@@ -1,6 +1,8 @@
-import reload
 import os
+
 import pytest
+from app import reload
+
 
 @pytest.fixture(scope="session", autouse=True)
 def init_db():
@@ -9,6 +11,7 @@ def init_db():
     reload.createTables(ctx)
     yield
 
+
 @pytest.fixture(scope="session", autouse=True)
 def pause():
     try:
@@ -16,6 +19,3 @@ def pause():
     finally:
         if os.environ.get("PAUSE") == "1":
             input("Press Enter to continue...")
-
-
-       

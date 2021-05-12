@@ -15,22 +15,24 @@ with open(mapping) as f:
             if expr == "n/a":
                 break
             elif "(" in expr:
-                expr = expr[expr.index("(") + 1:expr.rindex(")")]
+                expr = expr[expr.index("(") + 1 : expr.rindex(")")]
             elif "/" in expr:
-                fields2.extend(map(lambda x : (x, ty, r), expr.split("/")))
+                fields2.extend(map(lambda x: (x, ty, r), expr.split("/")))
                 break
             else:
                 fields2.append((expr, ty, r))
                 break
-            
+
         fields |= set(fields2)
-        
+
+
 def match(k, fields):
     for f, ty, r in fields:
-        if f == k or (f.startswith(k) and f[len(k):].startswith("___")):
+        if f == k or (f.startswith(k) and f[len(k) :].startswith("___")):
             return (ty, r)
     return None
-        
+
+
 rows = []
 with open(data) as f:
     jsondata = json.load(f)

@@ -1,25 +1,27 @@
-import reload
-import server
+import csv
+import datetime
 import filecmp
-from sqlalchemy import create_engine, text
+import json
 import os
 import os.path
-import shutil
-from multiprocessing import Process
-import datetime
-import requests
-import time
-from rq import Worker
-from psycopg2 import connect
-import pytest
-import json
-import csv
-import yaml
-from contextlib import contextmanager
 import re
+import shutil
 import sys
+import time
+from contextlib import contextmanager
+from multiprocessing import Process
+
+import app.reload
+import app.server
+import pytest
+import requests
+import yaml
+from psycopg2 import connect
+from rq import Worker
+from sqlalchemy import create_engine, text
 
 WAIT_PERIOD = 3
+
 
 def countrows(src, mime):
     if mime == "text/csv":
@@ -35,7 +37,8 @@ def countrows(src, mime):
     elif mime == "application/json":
         with open(src, encoding="utf-8") as inf:
             return len(json.load(inf))
-    
+
+
 def bag_equal(a, b):
     t = list(b)
     for elem in a:
@@ -46,7 +49,7 @@ def bag_equal(a, b):
     return True
 
 
-def contains(a,b):
+def contains(a, b):
     return all(item in a.items() for item in b.items())
 
 
@@ -66,7 +69,7 @@ def bag_contains(a, b):
 
 
 def wait_for_task_to_finish(taskid):
-    
+
     ctx = reload.context()
     resp = requests.get("http://localhost:5000/task/" + taskid)
     print(resp.json())
@@ -77,7 +80,7 @@ def wait_for_task_to_finish(taskid):
 
 
 def wait_for_task_to_start(taskid):
-    
+
     ctx = reload.context()
     resp = requests.get("http://localhost:5000/task/" + taskid)
     print(resp.json())
@@ -85,6 +88,3 @@ def wait_for_task_to_start(taskid):
         time.sleep(1)
         resp = requests.get("http://localhost:5000/task/" + taskid)
         print(resp.json())
-
-
-
