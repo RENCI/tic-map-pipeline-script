@@ -1,4 +1,4 @@
-FROM ctmd-pipeline-reload:0.2.31
+FROM ctmd-pipeline-reload:v2.1
 
 RUN mkdir backup
 RUN pip3 install pytest hypothesis pyyaml pytest-timeout tx-functional

@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 
 import requests
 
@@ -19,7 +20,7 @@ class RedcapExport:
     def __init__(self, token: str, url: str):
         self.token = token
         self.url = url
-        self.batch_size = os.get.environ("BATCH_SIZE") or 10
+        self.batch_size = os.environ.get("BATCH_SIZE") or 10
 
     HEADERS: dict = {
         "Content-Type": "application/x-www-form-urlencoded",
