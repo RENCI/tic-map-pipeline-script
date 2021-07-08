@@ -28,9 +28,13 @@ redis_conn = redis.StrictRedis(host=os.environ["REDIS_QUEUE_HOST"], port=int(os.
 q = Queue(connection=redis_conn)
 
 TASK_TIME=int(os.environ["TASK_TIME"])
+KEEP_RESULT_FOR_SECONDS=int(os.environ.get("KEEP_RESULT_FOR_SECONDS", "172800"))
 
 logger = utils.getLogger(__name__)
 
+def enqueue(func, args=[], kwargs={}):
+    return q.enqueue(func, args=args, kwargs=kwargs, job_timeout=TASK_TIME, result_ttl=KEEP_RESULT_FOR_SECONDS)
+    
 def handleTableFunc(handler, args, tfname):
     try:
         handler(*args)
@@ -59,24 +63,24 @@ def server(ctx):
     
     def postBackup(ctx):
         ts = str(datetime.datetime.now())
-        pBackup = q.enqueue(reload.backUpDatabase, args=[ctx, ts], job_timeout=TASK_TIME)
+        pBackup = enqueue(reload.backUpDatabase, [ctx, ts])
         return json.dumps(pBackup.id)
 
     @app.route("/backup/<string:ts>", methods=["DELETE"])
     def deleteBackup(ts):
-        pDeleteBackup = q.enqueue(reload.deleteBackup, args=[ctx, ts], job_timeout=TASK_TIME)        
+        pDeleteBackup = enqueue(reload.deleteBackup, args=[ctx, ts])        
         return json.dumps(pDeleteBackup.id)
     
     @app.route("/restore/<string:ts>", methods=['POST'])
     def restore(ts):
-        pRestore = q.enqueue(reload.restoreDatabase, args=[ctx, ts], job_timeout=TASK_TIME)
+        pRestore = enqueue(reload.restoreDatabase, args=[ctx, ts])
         return json.dumps(pRestore.id)
     
     @app.route("/sync", methods=['POST'])
     def sync():
         pSync = q.enqueue(reload.entrypoint, args=[ctx], kwargs={
             "one_off": True
-        }, job_timeout=TASK_TIME)
+        })
         return json.dumps(pSync.id)
 
     def uploadFile():
@@ -136,7 +140,7 @@ def server(ctx):
         if isinstance(ret, Left):
             return ret.value, 405
         else:    
-            pTable = q.enqueue(handleTableFunc, args=[handler, [ctx, tablename, *args, tfname, kvp], tfname], job_timeout=TASK_TIME)
+            pTable = enqueue(handleTableFunc, args=[handler, [ctx, tablename, *args, tfname, kvp], tfname])
             return json.dumps(pTable.id)            
 
     @app.route("/table/<string:tablename>/column/<string:columnname>", methods=["POST"])

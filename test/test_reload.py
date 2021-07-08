@@ -18,6 +18,12 @@ import yaml
 from contextlib import contextmanager
 import re
 import sys
+from deepdiff import DeepDiff
+from rq.registry import StartedJobRegistry, FinishedJobRegistry, FailedJobRegistry, DeferredJobRegistry
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 from test_utils import WAIT_PERIOD, bag_contains, bag_equal, wait_for_task_to_start, wait_for_task_to_finish
 
@@ -34,7 +40,16 @@ def test_log(request):
 def test_downloadData():
     ctx = reload.context()
     reload.downloadData(ctx)
-    assert filecmp.cmp(ctx["dataInputFilePath"], "redcap/record.json")
+    try:
+        with open(ctx["dataInputFilePath"]) as f:
+            obj = json.load(f)
+        with open("redcap/record.json") as f2:
+            obj2 = json.load(f2)
+        diff = DeepDiff(obj, obj2)
+        assert len(diff) == 0
+    except:
+        os.stderr.write(str(diff) + "\n")
+        raise
     os.remove(ctx["dataInputFilePath"])
 
     
@@ -560,4 +575,68 @@ def test_blocklist5():
 
 def test_blocklist6():
     do_test_blocklist2("block3", 0)
+
+def trivia():
+    pass
+
+def test_keep_result_for_10_seconds():
+    try:
+        pWorker = Process(target = reload.startWorker)
+        pWorker.start()
+        logger.info("worker started, waiting for " + str(WAIT_PERIOD))
+        time.sleep(WAIT_PERIOD)
+
+        server.KEEP_RESULT_FOR_SECONDS = 10
+        p = server.enqueue(trivia, [])
+        pid = p.id
+
+        finishedjr = FinishedJobRegistry("default", connection=server.redis_conn)
+        logger.info("sleep 3 seconds")
+        time.sleep(3)
+
+        assert pid in finishedjr.get_job_ids()
+
+        logger.info("sleep 6 seconds")
+        time.sleep(6)
+
+        assert pid in finishedjr.get_job_ids()
+
+        logger.info("sleep 10 seconds")
+        time.sleep(10)
+
+        assert pid not in finishedjr.get_job_ids()
+    finally:
+        pWorker.terminate() 
+        reload.clearTasks()
+
+
+def test_keep_result_for_more_than_500_seconds():
+    try:
+        pWorker = Process(target = reload.startWorker)
+        pWorker.start()
+        logger.info("worker started, waiting for " + str(WAIT_PERIOD))
+        time.sleep(WAIT_PERIOD)
+
+        server.KEEP_RESULT_FOR_SECONDS = 1000
+        p = server.enqueue(trivia, [])
+        pid = p.id
+
+        finishedjr = FinishedJobRegistry("default", connection=server.redis_conn)
+        logger.info("sleep 3 seconds")
+        time.sleep(3)
+
+        assert pid in finishedjr.get_job_ids()
+
+        logger.info("sleep 600 seconds")
+        time.sleep(600)
+
+        assert pid in finishedjr.get_job_ids()
+
+        logger.info("sleep 1000 seconds")
+        time.sleep(1000)
+
+        assert pid not in finishedjr.get_job_ids()
+    finally:
+        pWorker.terminate() 
+        reload.clearTasks()
 

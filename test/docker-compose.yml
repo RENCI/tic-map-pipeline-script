@@ -17,7 +17,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    command: ["-s", "-x", "-vv"] # , "-k", "test_put_error_duplicate_column_upload"]
+    command: ["-s", "-x", "-vv"] # , "-k", "test_keep_result_for_10_seconds"]
     image: pmd-pipeline-reload-test:0.2.31
     environment:
       POSTGRES_DATABASE_NAME: $POSTGRES_DB
@@ -44,6 +44,7 @@ services:
       REDIS_LOCK_EXPIRE: $TASK_TIME
       REDIS_LOCK_TIMEOUT: $TASK_TIME
       TASK_TIME: $TASK_TIME
+      KEEP_RESULT_FOR_SECONDS: $KEEP_RESULT_FOR_SECONDS
       SPARK_DRIVER_MEMORY: $SPARK_DRIVER_MEMORY
       SPARK_EXECUTOR_MEMORY: $SPARK_EXECUTOR_MEMORY
       PAUSE: $PAUSE
