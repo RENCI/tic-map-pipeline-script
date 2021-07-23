@@ -51,13 +51,14 @@ RUN pip3 install csvkit
 RUN pip3 install  schedule pandas psycopg2-binary  requests flask redis rq oslash==0.5.1 tx-functional
 RUN pip3 install git+https://github.com/vaidik/sherlock.git@77742ba91a24f75ee62e1895809901bde018654f
 
-RUN wget https://apache.claz.org/spark/spark-2.4.7/spark-2.4.7-bin-hadoop2.7.tgz  
+RUN wget https://apache.claz.org/spark/spark-2.4.8/spark-2.4.8-bin-hadoop2.7.tgz
+# https://apache.claz.org/spark/spark-2.4.7/spark-2.4.7-bin-hadoop2.7.tgz
 #&& echo "0F5455672045F6110B030CE343C049855B7BA86C0ECB5E39A075FF9D093C7F648DA55DED12E72FFE65D84C32DCD5418A6D764F2D6295A3F894A4286CC80EF478  spark-2.4.7-bin-hadoop2.7.tgz" | sha512sum -c -
 
 # RUN wget http://apache.spinellicreations.com/spark/spark-2.4.7/spark-2.4.7-bin-hadoop2.7.tgz && echo "0F5455672045F6110B030CE343C049855B7BA86C0ECB5E39A075FF9D093C7F648DA55DED12E72FFE65D84C32DCD5418A6D764F2D6295A3F894A4286CC80EF478  spark-2.4.7-bin-hadoop2.7.tgz" | sha512sum -c -
 
-RUN tar zxvf spark-2.4.7-bin-hadoop2.7.tgz
-ENV PATH="/spark-2.4.7-bin-hadoop2.7/bin:${PATH}"
+RUN tar zxvf spark-2.4.8-bin-hadoop2.7.tgz
+ENV PATH="/spark-2.4.8-bin-hadoop2.7/bin:${PATH}"
 # set to 1 to reload data from redcap database
 ENV RELOAD_DATABASE=1
 # set to 1 for one off reload
