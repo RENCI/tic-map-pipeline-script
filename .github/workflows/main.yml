@@ -24,5 +24,6 @@ jobs:
           git submodule update --init --recursive
           docker build . -t ctmd-pipeline-reload:v2.1
           cd test
+          git checkout https://github.com/RENCI/HEAL-data-mapping.git
           docker-compose up --build --exit-code-from pipeline
 
