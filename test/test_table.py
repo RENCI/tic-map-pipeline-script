@@ -252,51 +252,51 @@ def do_test_post_table(verb1, verb2, src, cnttype, tablename, kvp1, kvp2, conten
 
 
 def test_put_error_duplicate_column_upload():
-    do_test_post_error(requests.put, "/add/ssd_error_duplicate_column_upload.csv", "text/csv", "SiteInformation", {}, 405, "duplicate header\\(s\\) in upload \\['siteNumber'\\]")
+    do_test_post_error(requests.put, "/add/ssd_error_duplicate_column_upload.csv", "text/csv", "SiteInformation", {}, 400, "Duplicate header\\(s\\) in upload \\['siteNumber'\\]")
 
 
 def test_put_error_duplicate_column_input():
-    do_test_post_error(requests.put, "/add/ssd.csv", "text/csv", "SiteInformation", {"siteNumber": None}, 405, "duplicate header\\(s\\) in input \\['siteNumber'\\]")
+    do_test_post_error(requests.put, "/add/ssd.csv", "text/csv", "SiteInformation", {"siteNumber": None}, 400, "Duplicate header\\(s\\) in input \\['siteNumber'\\]")
     
 
 def test_put_error_undefined_column_upload():
-    do_test_post_error(requests.put, "/add/ssd_error_undefined_column_upload.csv", "text/csv", "SiteInformation", {}, 405, "undefined header\\(s\\) in input \\['header'\\] available \\[.*\\]")
+    do_test_post_error(requests.put, "/add/ssd_error_undefined_column_upload.csv", "text/csv", "SiteInformation", {}, 400, "Undefined header\\[.*\\]")
 
 
 def test_put_error_undefined_column_input():
-    do_test_post_error(requests.put, "/add/ssd.csv", "text/csv", "SiteInformation", {"header": None}, 405, "undefined header\\(s\\) in input \\['header'\\] available \\[.*\\]")
+    do_test_post_error(requests.put, "/add/ssd.csv", "text/csv", "SiteInformation", {"header": None}, 400, "Undefined header\\[.*\\]")
     
 
 def test_put_error_number_of_items0():
-    do_test_post_error(requests.put, "/add/ssd_error_wrong_number_of_items0.csv", "text/csv", "SiteInformation", {"header": None}, 405, "row 0 number of items, expected 1, encountered 0")
+    do_test_post_error(requests.put, "/add/ssd_error_wrong_number_of_items0.csv", "text/csv", "SiteInformation", {"header": None}, 400, "Row 0 number of items, expected 1, encountered 0")
     
 
 def test_put_error_number_of_items2():
-    do_test_post_error(requests.put, "/add/ssd_error_wrong_number_of_items2.csv", "text/csv", "SiteInformation", {"header": None}, 405, "row 0 number of items, expected 1, encountered 2")
+    do_test_post_error(requests.put, "/add/ssd_error_wrong_number_of_items2.csv", "text/csv", "SiteInformation", {"header": None}, 400, "Row 0 number of items, expected 1, encountered 2")
     
 
 def test_post_error_duplicate_column_upload():
-    do_test_post_error(requests.post, "/add/ssd_error_duplicate_column_upload.csv", "text/csv", "SiteInformation", {}, 405, "duplicate header\\(s\\) in upload \\['siteNumber'\\]")
+    do_test_post_error(requests.post, "/add/ssd_error_duplicate_column_upload.csv", "text/csv", "SiteInformation", {}, 400, "Duplicate header\\(s\\) in upload \\['siteNumber'\\]")
 
 
 def test_post_error_duplicate_column_input():
-    do_test_post_error(requests.post, "/add/ssd.csv", "text/csv", "SiteInformation", {"siteNumber": None}, 405, "duplicate header\\(s\\) in input \\['siteNumber'\\]")
+    do_test_post_error(requests.post, "/add/ssd.csv", "text/csv", "SiteInformation", {"siteNumber": None}, 400, "Duplicate header\\(s\\) in input \\['siteNumber'\\]")
     
 
 def test_post_error_undefined_column_upload():
-    do_test_post_error(requests.post, "/add/ssd_error_undefined_column_upload.csv", "text/csv", "SiteInformation", {}, 405, "undefined header\\(s\\) in input \\['header'\\] available \\[.*\\]")
+    do_test_post_error(requests.post, "/add/ssd_error_undefined_column_upload.csv", "text/csv", "SiteInformation", {}, 400, "Undefined header\\[.*\\]")
 
 
 def test_post_error_undefined_column_input():
-    do_test_post_error(requests.post, "/add/ssd.csv", "text/csv", "SiteInformation", {"header": None}, 405, "undefined header\\(s\\) in input \\['header'\\] available \\[.*\\]")
+    do_test_post_error(requests.post, "/add/ssd.csv", "text/csv", "SiteInformation", {"header": None}, 400, "Undefined header\\[.*\\]")
     
 
 def test_post_error_number_of_items0():
-    do_test_post_error(requests.post, "/add/ssd_error_wrong_number_of_items0.csv", "text/csv", "SiteInformation", {"header": None}, 405, "row 0 number of items, expected 1, encountered 0")
+    do_test_post_error(requests.post, "/add/ssd_error_wrong_number_of_items0.csv", "text/csv", "SiteInformation", {"header": None}, 400, "Row 0 number of items, expected 1, encountered 0")
     
 
 def test_post_error_number_of_items2():
-    do_test_post_error(requests.post, "/add/ssd_error_wrong_number_of_items2.csv", "text/csv", "SiteInformation", {"header": None}, 405, "row 0 number of items, expected 1, encountered 2")
+    do_test_post_error(requests.post, "/add/ssd_error_wrong_number_of_items2.csv", "text/csv", "SiteInformation", {"header": None}, 400, "Row 0 number of items, expected 1, encountered 2")
     
 
 def do_test_post_error(verb1, src, cnttype, tablename, kvp1, status_code, resp_text):
