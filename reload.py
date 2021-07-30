@@ -12,9 +12,11 @@ import subprocess
 import sys
 import tempfile
 import time
-from multiprocessing import Process
+import difflib
+from multiprocessing import Process, Value
 from pathlib import Path
 from stat import S_ISREG, ST_MODE, ST_MTIME
+from dateutil.parser import parse
 
 import redis
 import requests
@@ -436,13 +438,6 @@ def validateTable(ctx, tablename, tfname, kvp):
     with open(tfname, "r", newline="", encoding="utf-8") as tfi:
         reader = csv.reader(tfi)
         header = next(reader)
-        n = len(header)
-        i = 0
-        for row in reader:
-            n2 = len(row)
-            if n2 != n:
-                return Left(f"row {i} number of items, expected {n}, encountered {n2}")
-            i += 1
         seen = set()
         dups = []
         for x in header:
@@ -451,11 +446,11 @@ def validateTable(ctx, tablename, tfname, kvp):
             else:
                 seen.add(x)
         if len(dups) > 0:
-            return Left(f"duplicate header(s) in upload {dups}")
+            return [f"Duplicate header(s) in upload {dups}"]
         header2 = list(kvp.keys())
-        i2 = [a for a in header if a in header2]
-        if len(i2) > 0:
-            return Left(f"duplicate header(s) in input {i2}")
+        _i = [a for a in header if a in header2]
+        if len(_i) > 0:
+            return [f"Duplicate header(s) in input {_i}"]
         conn = connect(
             user=ctx["dbuser"],
             password=ctx["dbpass"],
@@ -474,11 +469,48 @@ def validateTable(ctx, tablename, tfname, kvp):
                 (tablename,),
             )
             rows = cursor.fetchall()
-            header3 = list(map(lambda r: r[0], rows))
-            d2 = [a for a in header + header2 if a not in header3]
-            if len(d2) > 0:
-                return Left(f"undefined header(s) in input {d2} available {header3}")
-            return Right(())
+            headerNames = list(map(lambda r: r[0], rows))
+            headerDataTypes = list(map(lambda r: r[1], rows))
+            headerTypesDict = dict(zip(headerNames, headerDataTypes))
+
+            errors = []
+            undefinedHeaders = [a for a in header + header2 if a not in headerNames]
+            for undefinedHeader in undefinedHeaders:
+                closeMatches = difflib.get_close_matches(undefinedHeader, headerNames)
+                if len(closeMatches) > 0:
+                    errors.append(f"Undefined header {undefinedHeader}. Did you mean {closeMatches[0]}?")
+                else:
+                    errors.append(f"Undefined header {undefinedHeader}")
+            if len(errors) > 0:
+                return errors
+
+            i = 2
+            errors = []
+            for row in reader:
+                j = 0
+                for cell in row:
+                    cellDataType = headerTypesDict[header[j]]
+                    cellLetter = chr(ord('@')+(j + 1))
+                    if "int" in cellDataType:
+                        try:
+                            int(cell)
+                        except ValueError:
+                            errors.append(f"Cell {cellLetter}{i} must be a natural number")
+                    elif "double" in cellDataType:
+                        try:
+                            float(cell)
+                        except ValueError:
+                            errors.append(f"Cell {cellLetter}{i} must be a decimal number")
+                    elif "date" in cellDataType:
+                        try: 
+                            parse(cell, fuzzy=True)
+                        except ValueError:
+                            errors.append(f"Cell {cellLetter}{i} must be a date (MM-DD-YYYY)")
+                    j += 1
+                i += 1
+            if len(errors) > 0:
+                return errors
+            return None
         finally:
             cursor.close()
             conn.close()
