@@ -443,7 +443,7 @@ def validateTable(ctx, tablename, tfname, kvp):
         for row in reader:
             n2 = len(row)
             if n2 != n:
-                return Left(f"Row {i} number of items, expected {n}, encountered {n2}")
+                return [f"Row {i} number of items, expected {n}, encountered {n2}"]
             i += 1
         seen = set()
         dups = []
