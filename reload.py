@@ -438,13 +438,6 @@ def validateTable(ctx, tablename, tfname, kvp):
     with open(tfname, "r", newline="", encoding="utf-8") as tfi:
         reader = csv.reader(tfi)
         header = next(reader)
-        n = len(header)
-        i = 0
-        for row in reader:
-            n2 = len(row)
-            if n2 != n:
-                return [f"Row {i} number of items, expected {n}, encountered {n2}"]
-            i += 1
         seen = set()
         dups = []
         for x in header:
