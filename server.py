@@ -132,10 +132,10 @@ def server(ctx):
             
     def handleTable(handler, ctx, tablename, *args):
         tfname, kvp = uploadFile()
-        ret = reload.validateTable(ctx, tablename, tfname, kvp)
-        if isinstance(ret, Left):
-            return ret.value, 405
-        else:    
+        error = reload.validateTable(ctx, tablename, tfname, kvp)
+        if error != None:
+            return json.dumps(error), 400
+        else:
             pTable = q.enqueue(handleTableFunc, args=[handler, [ctx, tablename, *args, tfname, kvp], tfname], job_timeout=TASK_TIME)
             return json.dumps(pTable.id)            
 
