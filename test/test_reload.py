@@ -18,6 +18,7 @@ import yaml
 from contextlib import contextmanager
 import re
 import sys
+from deepdiff import DeepDiff
 
 from test_utils import WAIT_PERIOD, bag_contains, bag_equal, wait_for_task_to_start, wait_for_task_to_finish
 
@@ -34,7 +35,16 @@ def test_log(request):
 def test_downloadData():
     ctx = reload.context()
     reload.downloadData(ctx)
-    assert filecmp.cmp(ctx["dataInputFilePath"], "redcap/record.json")
+    try:
+        with open(ctx["dataInputFilePath"]) as f:
+            obj = json.load(f)
+	with open("redcap/record.json") as f2:
+            obj2 = json.load(f2)
+        diff = DeepDiff(obj, obj2)
+        assert len(diff) == 0
+    except:
+        os.stderr.write(str(diff) + "\n")
+        raise
     os.remove(ctx["dataInputFilePath"])
 
     
@@ -42,7 +52,16 @@ def test_downloadDataDictionary():
     
     ctx = reload.context()
     reload.downloadDataDictionary(ctx)
-    assert filecmp.cmp(ctx["dataDictionaryInputFilePath"], "redcap/metadata.json")
+    try:
+        with open(ctx["dataDictionaryInputFilePath"]) as f:
+            obj = json.load(f)
+	with open("redcap/metadata.json") as f2:
+            obj2 = json.load(f2)
+        diff = DeepDiff(obj, obj2)
+        assert len(diff) == 0
+    except:
+        os.stderr.write(str(diff) + "\n")
+        raise
     os.remove(ctx["dataDictionaryInputFilePath"])
 
 
