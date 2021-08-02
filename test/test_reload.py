@@ -38,7 +38,7 @@ def test_downloadData():
     try:
         with open(ctx["dataInputFilePath"]) as f:
             obj = json.load(f)
-	with open("redcap/record.json") as f2:
+        with open("redcap/record.json") as f2:
             obj2 = json.load(f2)
         diff = DeepDiff(obj, obj2)
         assert len(diff) == 0
@@ -55,7 +55,7 @@ def test_downloadDataDictionary():
     try:
         with open(ctx["dataDictionaryInputFilePath"]) as f:
             obj = json.load(f)
-	with open("redcap/metadata.json") as f2:
+        with open("redcap/metadata.json") as f2:
             obj2 = json.load(f2)
         diff = DeepDiff(obj, obj2)
         assert len(diff) == 0
