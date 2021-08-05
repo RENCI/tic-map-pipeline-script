@@ -484,7 +484,7 @@ def validateTable(ctx, tablename, tfname, kvp):
             if len(errors) > 0:
                 return errors
 
-            i = 2
+            i = 3
             errors = []
             for row in reader:
                 j = 0
@@ -506,6 +506,11 @@ def validateTable(ctx, tablename, tfname, kvp):
                             parse(cell, fuzzy=True)
                         except ValueError:
                             errors.append(f"Cell {cellLetter}{i} must be a date (MM-DD-YYYY)")
+                    elif "bool" in cellDataType:
+                        try:
+                            bool(cell)
+                        except ValueError:
+                            errors.append(f"Cell {cellLetter}{i} must be a true or false value")
                     j += 1
                 i += 1
             if len(errors) > 0:
