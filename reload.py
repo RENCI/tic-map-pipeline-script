@@ -4,6 +4,7 @@ import filecmp
 import functools
 import json
 import logging
+import string
 import os
 import shutil
 import socket
@@ -274,7 +275,7 @@ def _createTables(ctx):
     )
     conn.autocommit = True
     cursor = conn.cursor()
-    with open("data/tables.sql", encoding="utf-8") as f:
+    with open("data/tables.sql", encoding="latin-1") as f:
         for line in f:
             logger.info("executing " + line)
             cursor.execute(line)
@@ -328,11 +329,11 @@ def runFile(func, f, kvp):
         add_headers = add_data = []
     else:
         add_headers, add_data = map(list, zip(*kvp.items()))
-    outf = tempfile.NamedTemporaryFile("w+", newline="", encoding="utf-8", delete=False)
+    outf = tempfile.NamedTemporaryFile("w+", newline="", encoding="latin-1", delete=False)
     try:
         with outf:
             writer = csv.writer(outf)
-            with open(f, newline="", encoding="utf-8") as inf:
+            with open(f, newline="", encoding="latin-1") as inf:
                 reader = csv.reader(inf)
                 headers = next(reader)
                 print(add_headers, add_data)
@@ -365,7 +366,7 @@ def _insertDataIntoTable(ctx, table, f, kvp):
                 "-d",
                 ",",
                 "-e",
-                "utf8",
+                "latin1",
                 "--no-inference",
                 "--tables",
                 table,
@@ -433,11 +434,24 @@ order by table_schema, table_name
     conn.close()
     return dt
 
+def _checkCsv(_file):
+    try:
+        with open(_file, newline='', encoding="latin-1") as csvfile:
+            start = csvfile.read(4096)
+
+            if not all([c in string.printable or c.isprintable() for c in start]):
+                return False
+            dialect = csv.Sniffer().sniff(start)
+            return True
+    except csv.Error:
+        return False
+
 
 def validateTable(ctx, tablename, tfname, kvp):
-    if not str(tfname).endswith('.csv'):
-        return [f"File must be CSV"]
-    with open(tfname, "r", newline="", encoding="utf-8") as tfi:
+    if not _checkCsv(tfname):
+        return ["File must be a CSV"]
+
+    with open(tfname, "r", newline="", encoding="latin-1") as tfi:
         reader = csv.reader(tfi)
         header = next(reader)
         seen = set()
@@ -498,7 +512,7 @@ def validateTable(ctx, tablename, tfname, kvp):
                             if lastCell == None:
                                 lastCell = cell
                             else:
-                                return [f"For Study Sites uploads, ensure all proposal ID's match"]
+                                return ["For Study Sites uploads, ensure all proposal ID's match"]
 
                     cellDataType = headerTypesDict[header[j]]
                     cellLetter = chr(ord('@')+(j + 1))
@@ -558,7 +572,7 @@ def _updateDataIntoTableColumn(ctx, table, column, f, kvp):
         dbname=ctx["dbname"],
     )
     cursor = conn.cursor()
-    with open(f, newline="", encoding="utf-8") as inf:
+    with open(f, newline="", encoding="latin-1") as inf:
         reader = csv.reader(inf)
         headers = next(reader)
         headers2 = headers + add_headers
