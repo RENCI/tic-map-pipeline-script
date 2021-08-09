@@ -435,6 +435,8 @@ order by table_schema, table_name
 
 
 def validateTable(ctx, tablename, tfname, kvp):
+    if not str(tfname).endswith('.csv'):
+        return [f"File must be CSV"]
     with open(tfname, "r", newline="", encoding="utf-8") as tfi:
         reader = csv.reader(tfi)
         header = next(reader)
@@ -484,11 +486,20 @@ def validateTable(ctx, tablename, tfname, kvp):
             if len(errors) > 0:
                 return errors
 
-            i = 2
+            i = 3
             errors = []
+            lastCell = None
             for row in reader:
                 j = 0
                 for cell in row:
+
+                    if tablename.lower() == "studysites" and header[j].lower() == "proposalid":
+                        if cell != lastCell:
+                            if lastCell == None:
+                                lastCell = cell
+                            else:
+                                return [f"For Study Sites uploads, ensure all proposal ID's match"]
+
                     cellDataType = headerTypesDict[header[j]]
                     cellLetter = chr(ord('@')+(j + 1))
                     if "int" in cellDataType:
@@ -506,10 +517,16 @@ def validateTable(ctx, tablename, tfname, kvp):
                             parse(cell, fuzzy=True)
                         except ValueError:
                             errors.append(f"Cell {cellLetter}{i} must be a date (MM-DD-YYYY)")
+                    elif "bool" in cellDataType:
+                        try:
+                            bool(cell)
+                        except ValueError:
+                            errors.append(f"Cell {cellLetter}{i} must be a true or false value")
                     j += 1
                 i += 1
             if len(errors) > 0:
                 return errors
+
             return None
         finally:
             cursor.close()
