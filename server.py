@@ -100,8 +100,8 @@ def server(ctx):
                         writer.writerow([rowdict[key] for key in keys])
             elif request.form["content-type"] == "text/csv":
                 f.save(tfname2)
-                with open(tfname2, "r", newline="", encoding="utf-8") as tfi2:
-                    with open(tfname, "w", newline="", encoding="utf-8") as tfi:
+                with open(tfname2, "r", newline="", encoding="latin-1") as tfi2:
+                    with open(tfname, "w", newline="", encoding="latin-1") as tfi:
                         reader = csv.reader(tfi2)
                         writer = csv.writer(tfi)
                         if request.form.get("has_comments", "false") == "true":
