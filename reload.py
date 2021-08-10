@@ -524,11 +524,8 @@ def validateTable(ctx, tablename, tfname, kvp):
                             except ValueError:
                                 errors.append(f"Cell {cellLetter}{i} must be a date (MM-DD-YYYY)")
                         elif "bool" in cellDataType:
-                            try:
-                                bool(cell)
-                            except ValueError:
-                                if cell.lower() not in ['yes', 'no', 'true', 'false']:
-                                    errors.append(f"Cell {cellLetter}{i} must be a true or false value")
+                            if cell.lower() not in ['true', 'false', 'yes', 'no']:
+                                errors.append(f"Cell {cellLetter}{i} must be a true or false value")
                     j += 1
                 i += 1
             if len(errors) > 0:
