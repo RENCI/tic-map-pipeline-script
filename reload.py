@@ -434,23 +434,7 @@ order by table_schema, table_name
     conn.close()
     return dt
 
-def _checkCsv(_file):
-    try:
-        with open(_file, newline='', encoding="latin-1") as csvfile:
-            start = csvfile.read(4096)
-
-            if not all([c in string.printable or c.isprintable() for c in start]):
-                return False
-            dialect = csv.Sniffer().sniff(start)
-            return True
-    except csv.Error:
-        return False
-
-
 def validateTable(ctx, tablename, tfname, kvp):
-    if not _checkCsv(tfname):
-        return ["File must be a CSV"]
-
     with open(tfname, "r", newline="", encoding="latin-1") as tfi:
         reader = csv.reader(tfi)
         header = next(reader)
@@ -477,7 +461,7 @@ def validateTable(ctx, tablename, tfname, kvp):
         try:
             cursor.execute(
                 """
-                select column_name, data_type
+                select column_name, data_type, is_nullable
                 from information_schema.columns
                 where table_schema NOT IN ('information_schema', 'pg_catalog') and table_name=%s
                 order by table_schema, table_name
@@ -487,7 +471,9 @@ def validateTable(ctx, tablename, tfname, kvp):
             rows = cursor.fetchall()
             headerNames = list(map(lambda r: r[0], rows))
             headerDataTypes = list(map(lambda r: r[1], rows))
+            headerNullable = list(map(lambda r: r[2], rows))
             headerTypesDict = dict(zip(headerNames, headerDataTypes))
+            headerNullableDict = dict(zip(headerNames, headerNullable))
 
             errors = []
             undefinedHeaders = [a for a in header + header2 if a not in headerNames]
@@ -516,26 +502,33 @@ def validateTable(ctx, tablename, tfname, kvp):
 
                     cellDataType = headerTypesDict[header[j]]
                     cellLetter = chr(ord('@')+(j + 1))
-                    if "int" in cellDataType:
-                        try:
-                            int(cell)
-                        except ValueError:
-                            errors.append(f"Cell {cellLetter}{i} must be a natural number")
-                    elif "double" in cellDataType:
-                        try:
-                            float(cell)
-                        except ValueError:
-                            errors.append(f"Cell {cellLetter}{i} must be a decimal number")
-                    elif "date" in cellDataType:
-                        try: 
-                            parse(cell, fuzzy=True)
-                        except ValueError:
-                            errors.append(f"Cell {cellLetter}{i} must be a date (MM-DD-YYYY)")
-                    elif "bool" in cellDataType:
-                        try:
-                            bool(cell)
-                        except ValueError:
-                            errors.append(f"Cell {cellLetter}{i} must be a true or false value")
+                    cellNullable = headerNullableDict[header[j]] == "YES"
+
+                    if cell is None or cell == "":
+                        if not cellNullable:
+                            return [f"Cell {cellLetter}{i} must have a value"]
+                    if cell is not None and cell != "":
+                        if "int" in cellDataType:
+                            try:
+                                int(cell)
+                            except ValueError:
+                                errors.append(f"Cell {cellLetter}{i} must be a natural number")
+                        elif "double" in cellDataType:
+                            try:
+                                float(cell)
+                            except ValueError:
+                                errors.append(f"Cell {cellLetter}{i} must be a decimal number")
+                        elif "date" in cellDataType:
+                            try: 
+                                parse(cell, fuzzy=True)
+                            except ValueError:
+                                errors.append(f"Cell {cellLetter}{i} must be a date (MM-DD-YYYY)")
+                        elif "bool" in cellDataType:
+                            try:
+                                bool(cell)
+                            except ValueError:
+                                if cell.lower() not in ['yes', 'no', 'true', 'false']:
+                                    errors.append(f"Cell {cellLetter}{i} must be a true or false value")
                     j += 1
                 i += 1
             if len(errors) > 0:
