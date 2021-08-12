@@ -137,7 +137,7 @@ def server(ctx):
             return json.dumps(error), 400
         else:
             pTable = q.enqueue(handleTableFunc, args=[handler, [ctx, tablename, *args, tfname, kvp], tfname], job_timeout=TASK_TIME)
-            return json.dumps(pTable.id)            
+            return json.dumps(pTable.id)
 
     @app.route("/table/<string:tablename>/column/<string:columnname>", methods=["POST"])
     def tableColumn(tablename, columnname):
