@@ -507,6 +507,8 @@ def validateTable(ctx, tablename, tfname, kvp):
                     if cell is None or cell == "":
                         if not cellNullable:
                             return [f"Cell {cellLetter}{i} must have a value"]
+                        if (tablename.lower() == "studysites" and len(seen) < 4) or tablename.lower() == "ctsas":
+                            errors.append(f"Cell {cellLetter}{i} is blank")
                     if cell is not None and cell != "":
                         if "int" in cellDataType:
                             try:
