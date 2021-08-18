@@ -17,7 +17,6 @@ import difflib
 from multiprocessing import Process, Value
 from pathlib import Path
 from stat import S_ISREG, ST_MODE, ST_MTIME
-from dateutil.parser import parse
 
 import redis
 import requests
@@ -434,6 +433,14 @@ order by table_schema, table_name
     conn.close()
     return dt
 
+def validateDateFormat(text):
+    for fmt in ('%m-%d-%Y', '%m/%d/%Y'):
+        try:
+            return datetime.datetime.strptime(text, fmt)
+        except ValueError:
+            pass
+    return False
+
 def validateTable(ctx, tablename, tfname, kvp):
     with open(tfname, "r", newline="", encoding="latin-1") as tfi:
         reader = csv.reader(tfi)
@@ -521,10 +528,8 @@ def validateTable(ctx, tablename, tfname, kvp):
                             except ValueError:
                                 errors.append(f"Cell {cellLetter}{i} must be a decimal number")
                         elif "date" in cellDataType:
-                            try: 
-                                parse(cell, fuzzy=True)
-                            except ValueError:
-                                errors.append(f"Cell {cellLetter}{i} must be a date (MM-DD-YYYY)")
+                            if not validateDateFormat(cell):
+                                errors.append(f"Cell {cellLetter}{i} must be a date in the format MM-DD-YYYY)")
                         elif "bool" in cellDataType:
                             if cell.lower() not in ['true', 'false', 'yes', 'no']:
                                 errors.append(f"Cell {cellLetter}{i} must be a true or false value")
