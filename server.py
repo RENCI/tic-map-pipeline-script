@@ -132,7 +132,7 @@ def server(ctx):
             
     def handleTable(handler, ctx, tablename, *args):
         tfname, kvp = uploadFile()
-        error = reload.validateTable(ctx, tablename, tfname, kvp)
+        error = reload.validateTable(ctx, tablename, tfname, kvp, request.form['user'])
         if error != None:
             return json.dumps(error), 400
         else:

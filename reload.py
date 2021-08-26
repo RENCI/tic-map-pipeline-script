@@ -434,7 +434,7 @@ order by table_schema, table_name
     conn.close()
     return dt
 
-def validateTable(ctx, tablename, tfname, kvp):
+def validateTable(ctx, tablename, tfname, kvp, user):
     with open(tfname, "r", newline="", encoding="latin-1") as tfi:
         reader = csv.reader(tfi)
         header = next(reader)
@@ -488,21 +488,27 @@ def validateTable(ctx, tablename, tfname, kvp):
 
             i = 3
             errors = []
-            lastCell = None
+            lastProposalID = None
             for row in reader:
                 j = 0
                 for cell in row:
 
                     if tablename.lower() == "studysites" and header[j].lower() == "proposalid":
-                        if cell != lastCell:
-                            if lastCell == None:
-                                lastCell = cell
+                        if cell != lastProposalID:
+                            if lastProposalID == None:
+                                lastProposalID = cell
                             else:
                                 return ["For Study Sites uploads, ensure all proposal ID's match"]
 
                     cellDataType = headerTypesDict[header[j]]
                     cellLetter = chr(ord('@')+(j + 1))
                     cellNullable = headerNullableDict[header[j]] == "YES"
+
+                    #temporary
+                    #TODO this needs some major changes in order to be appropriately robust
+                    global_write_permissions = os.getenv("GLOBAL_WRITE_PERMISSIONS").split(",")
+                    if ((tablename.lower() == "studysites" and len(seen) < 4) or tablename.lower() == "ctsas") and user not in global_write_permissions:
+                        return ["You do not have global write permissions"]
 
                     if cell is None or cell == "":
                         if not cellNullable:
