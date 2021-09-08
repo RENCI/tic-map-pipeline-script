@@ -486,6 +486,16 @@ def validateTable(ctx, tablename, tfname, kvp, user):
             if len(errors) > 0:
                 return errors
 
+            #temporary
+            #TODO this needs some major changes in order to be appropriately robust
+            global_write_permissions = os.getenv("GLOBAL_WRITE_PERMISSIONS")
+            if not global_write_permissions:
+                global_write_permissions = []
+            else:
+                global_write_permissions = global_write_permissions.split(",")
+            if ((tablename.lower() == "studysites" and len(seen) < 4) or tablename.lower() == "ctsas") and (user not in global_write_permissions or not user):
+                return ["You do not have global write permissions"]
+
             i = 3
             errors = []
             lastProposalID = None
@@ -503,12 +513,6 @@ def validateTable(ctx, tablename, tfname, kvp, user):
                     cellDataType = headerTypesDict[header[j]]
                     cellLetter = chr(ord('@')+(j + 1))
                     cellNullable = headerNullableDict[header[j]] == "YES"
-
-                    #temporary
-                    #TODO this needs some major changes in order to be appropriately robust
-                    global_write_permissions = os.getenv("GLOBAL_WRITE_PERMISSIONS").split(",")
-                    if ((tablename.lower() == "studysites" and len(seen) < 4) or tablename.lower() == "ctsas") and user not in global_write_permissions:
-                        return ["You do not have global write permissions"]
 
                     if cell is None or cell == "":
                         if not cellNullable:
