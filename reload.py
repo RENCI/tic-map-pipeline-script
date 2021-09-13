@@ -18,7 +18,7 @@ from multiprocessing import Process, Value
 from pathlib import Path
 from stat import S_ISREG, ST_MODE, ST_MTIME
 from dateutil.parser import parse
-
+import utils
 import redis
 import requests
 import schedule
@@ -29,8 +29,11 @@ from rq import Connection, Queue, Worker
 from sherlock import Lock
 from tx.functional.either import Left, Right
 
-import utils
 
+#most worker functions are found here in reload
+
+#lock, functions prepended by _ are not locked, they are called within a wrapper
+#of the same name (without the _) which do use the lock. this is important
 sherlock.configure(
     backend=sherlock.backends.REDIS,
     client=redis.StrictRedis(
@@ -209,7 +212,8 @@ def _restoreDatabase(ctx, ts):
 def dataDictionaryBackUpDirectory(ctx):
     return ctx["backupDir"] + "/redcap_data_dictionary"
 
-
+#data dictionaries are the mapping between local keys and redcap keys
+#they are downloaded and backed up for each db update
 def backUpDataDictionary(ctx):
     data_dictionary_backup_dir = dataDictionaryBackUpDirectory(ctx)
     data_dictionary_backup_path = data_dictionary_backup_dir + "/redcap_data_dictionary_export.json"
@@ -351,7 +355,7 @@ def insertDataIntoTable(ctx, table, f, kvp):
     with Lock(G_LOCK):
         return _insertDataIntoTable(ctx, table, f, kvp)
 
-
+#main write function
 def _insertDataIntoTable(ctx, table, f, kvp):
     logger.info("inserting into table " + table)
     checkId(table)
@@ -386,7 +390,7 @@ def updateDataIntoTable(ctx, table, f, kvp):
     with Lock(G_LOCK):
         return _updateDataIntoTable(ctx, table, f, kvp)
 
-
+#update wrapper for the insert data function, it is performing effectively the same thing
 def _updateDataIntoTable(ctx, table, f, kvp):
     logger.info("inserting into table " + table)
     checkId(table)
@@ -410,7 +414,7 @@ def checkId(i):
     if '"' in i:
         raise RuntimeError("invalid name {0}".format(i))
 
-
+#get the data type of a particular field, useful for validation
 def getColumnDataType(ctx, table, column):
     conn = connect(
         user=ctx["dbuser"],
@@ -434,6 +438,8 @@ order by table_schema, table_name
     conn.close()
     return dt
 
+#main error handling function
+#TODO's: there's no robust way of differentiating global site uploads from study-wise site uploads
 def validateTable(ctx, tablename, tfname, kvp):
     with open(tfname, "r", newline="", encoding="latin-1") as tfi:
         reader = csv.reader(tfi)
@@ -631,7 +637,6 @@ def etl(ctx):
     if os.path.isdir("data/tables"):
         for f in os.listdir("data/tables"):
             os.remove("data/tables/" + f)
-    # logger.info("THIS IS THE FILE THAT IS GOING TO BE READ", ctx["dataInputFilePath"])
     cp = subprocess.run(
         [
             "spark-submit",
