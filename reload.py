@@ -494,15 +494,24 @@ def validateTable(ctx, tablename, tfname, kvp):
 
             i = 3
             errors = []
-            lastCell = None
+            siteIds = []
+            ctsaIds = []
+            lastProposalId = None
             for row in reader:
                 j = 0
                 for cell in row:
-
+                    if (tablename.lower() == "studysites" and len(seen) < 4) and header[j].lower() == "siteId":
+                        if cell in siteIds:
+                            return ["Duplicate ID's"]
+                        siteIds.append(cell)
+                    if tablename.lower() == "ctsas" and header[j].lower() == "ctsaId":
+                        if cell in ctsaIds:
+                            return ["Duplicate ID's"]
+                        ctsaIds.append(cell)
                     if tablename.lower() == "studysites" and header[j].lower() == "proposalid":
-                        if cell != lastCell:
-                            if lastCell == None:
-                                lastCell = cell
+                        if cell != lastProposalId:
+                            if lastProposalId == None:
+                                lastProposalId = cell
                             else:
                                 return ["For Study Sites uploads, ensure all proposal ID's match"]
 
