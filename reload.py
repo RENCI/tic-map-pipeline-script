@@ -357,7 +357,6 @@ def insertDataIntoTable(ctx, table, f, kvp):
 
 #main write function
 def _insertDataIntoTable(ctx, table, f, kvp):
-    logger.info("inserting into table " + table)
     checkId(table)
     cp = runFile(
         lambda fn: subprocess.run(
@@ -380,6 +379,7 @@ def _insertDataIntoTable(ctx, table, f, kvp):
         f,
         kvp,
     )
+
     if cp.returncode != 0:
         logger.error("error inserting data into table " + table + " " + f + " " + str(cp.returncode))
         return False
@@ -392,7 +392,6 @@ def updateDataIntoTable(ctx, table, f, kvp):
 
 #update wrapper for the insert data function, it is performing effectively the same thing
 def _updateDataIntoTable(ctx, table, f, kvp):
-    logger.info("inserting into table " + table)
     checkId(table)
 
     conn = connect(
@@ -444,6 +443,7 @@ def validateTable(ctx, tablename, tfname, kvp):
     with open(tfname, "r", newline="", encoding="latin-1") as tfi:
         reader = csv.reader(tfi)
         header = next(reader)
+
         seen = set()
         dups = []
         for x in header:
@@ -454,6 +454,7 @@ def validateTable(ctx, tablename, tfname, kvp):
         if len(dups) > 0:
             return [f"Duplicate header(s) in upload {dups}"]
         header2 = list(kvp.keys())
+
         _i = [a for a in header if a in header2]
         if len(_i) > 0:
             return [f"Duplicate header(s) in input {_i}"]
@@ -551,12 +552,9 @@ def updateDataIntoTableColumn(ctx, table, column, f, kvp):
 
 
 def _updateDataIntoTableColumn(ctx, table, column, f, kvp):
-    logger.info("inserting into table " + table + " with column " + column)
     checkId(table)
     checkId(column)
     dt = getColumnDataType(ctx, table, column)
-
-    updated = set()
 
     if len(kvp) == 0:
         add_headers = add_data = []
@@ -590,14 +588,73 @@ def _updateDataIntoTableColumn(ctx, table, column, f, kvp):
         for row in reader:
             row2 = row + add_data
             val = fn(row2[index])
-            if val not in updated:
-                cursor.execute('delete from "{0}" where "{1}" = %s'.format(table, column), (val,))
-                updated.add(val)
+            if column == 'siteId':
+                add_column = 'ProposalID'
+            elif column == 'ProposalID':
+                add_column = 'siteId'
+            else:
+                add_column = None
+
+            if not add_column:
+                cursor.execute(
+                    'SELECT "{0}" FROM "{1}" WHERE "{0}" = %s'.format(column, table), (val,))
+            else:
+                add_index = headers2.index(add_column)
+                add_val = fn(row2[add_index])
+                cursor.execute(
+                    'SELECT "{0}" FROM "{1}" WHERE "{0}" = {2} and "{3}" = %s'.format(column, table, val,
+                                                                                      add_column), (add_val,))
+            rows = cursor.fetchall()
+            if len(rows) > 0:
+                # row exists, so do update
+                update_strs = []
+                for idx, header in enumerate(headers2):
+                    if header == column or header == add_column:
+                        continue
+                    row_val = row2[idx]
+                    if not row_val:
+                        continue
+                    try:
+                        int_row_val = int(row_val)
+                    except Exception:
+                        row_val = row_val.replace("'", "''")
+                        row_val = "'{}'".format(row_val)
+                    update_strs.append('"{}" = {}'.format(header, row_val))
+                logger.info(update_strs)
+                update_str = ','.join(update_strs)
+                logger.info("_updateDataIntoTableColumn: update_str="+update_str)
+                if not add_column:
+                    cmd = 'update "{0}" set {1} where "{2}" = {3}'.format(table, update_str, column, val)
+                else:
+                    cmd = 'update "{0}" set {1} where "{2}" = {3} and "{4}" = {5}'.format(
+                        table, update_str, column, val, add_column, add_val)
+                cursor.execute(cmd)
+                logger.info("_updateDataIntoTableColumn: cmd="+cmd)
+            else:
+                # row does not exist, so do insert
+                insert_vals = []
+                insert_cols = []
+                for idx, header in enumerate(headers2):
+                    row_val = row2[idx]
+                    if not row_val:
+                        continue
+                    else:
+                        try:
+                            int_row_val = int(row_val)
+                        except Exception:
+                            row_val = row_val.replace("'", "''")
+                            row_val = "'{}'".format(row_val)
+                    insert_cols.append(f'"{header}"')
+                    insert_vals.append(row_val)
+                logger.info(insert_cols)
+                logger.info(insert_vals)
+                cursor.execute('insert into "{0}" ({1}) values ({2})'.format(table, ','.join(insert_cols),
+                                                                             ','.join(insert_vals)))
 
     cursor.close()
     conn.commit()
     conn.close()
-    return _insertDataIntoTable(ctx, table, f, kvp)
+    return True
 
 
 def readDataFromTable(ctx, table):
