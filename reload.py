@@ -552,6 +552,14 @@ def updateDataIntoTableColumn(ctx, table, column, f, kvp):
 
 
 def _updateDataIntoTableColumn(ctx, table, column, f, kvp):
+    """
+    This function is updated to use both siteId and ProposalID to determine whether to do update or insert since
+    there could be multiple proposals per site and we don't want to update those site rows with different proposal ids
+    in the existing database.
+    Since csvsql library does not have update functionality, we used to delete those rows from existing table that
+    match column value, followed by insertion of the uploaded csv file.
+    Code is updated to do update or insertion for each row rather than deletion followed by insertion
+    """
     checkId(table)
     checkId(column)
     dt = getColumnDataType(ctx, table, column)
