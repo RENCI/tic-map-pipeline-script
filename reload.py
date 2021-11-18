@@ -588,6 +588,10 @@ def _updateDataIntoTableColumn(ctx, table, column, f, kvp):
         for row in reader:
             row2 = row + add_data
             val = fn(row2[index])
+            # use both 'siteId' and 'ProposalID' columns if both exist to determine whether to do update or insert new
+            # if the same 'siteId' and 'ProposalID' values already exist in the database table, do update;
+            # otherwise, do insert. If only one of the two columns exist, use the single column to determine doing
+            # update or insert
             if column == 'siteId':
                 add_column = 'ProposalID'
             elif column == 'ProposalID':
@@ -607,21 +611,22 @@ def _updateDataIntoTableColumn(ctx, table, column, f, kvp):
             rows = cursor.fetchall()
             if len(rows) > 0:
                 # row exists, so do update
-                update_strs = []
+                update_str_list = []
                 for idx, header in enumerate(headers2):
                     if header == column or header == add_column:
                         continue
                     row_val = row2[idx]
                     if not row_val:
                         continue
+                    # need to remove apostrophe char for non-number values, i.e., strings; otherwise, database update
+                    # statement will fail
                     try:
-                        int_row_val = int(row_val)
+                        float_row_val = float(row_val)
                     except Exception:
-                        row_val = row_val.replace("'", "''")
+                        row_val = row_val.replace("'", "")
                         row_val = "'{}'".format(row_val)
-                    update_strs.append('"{}" = {}'.format(header, row_val))
-                logger.info(update_strs)
-                update_str = ','.join(update_strs)
+                    update_str_list.append('"{}" = {}'.format(header, row_val))
+                update_str = ','.join(update_str_list)
                 logger.info("_updateDataIntoTableColumn: update_str="+update_str)
                 if not add_column:
                     cmd = 'update "{0}" set {1} where "{2}" = {3}'.format(table, update_str, column, val)
@@ -639,10 +644,12 @@ def _updateDataIntoTableColumn(ctx, table, column, f, kvp):
                     if not row_val:
                         continue
                     else:
+                        # need to remove apostrophe char for non-number values, i.e., strings; otherwise, database
+                        # insert statement will fail
                         try:
-                            int_row_val = int(row_val)
+                            float_row_val = float(row_val)
                         except Exception:
-                            row_val = row_val.replace("'", "''")
+                            row_val = row_val.replace("'", "")
                             row_val = "'{}'".format(row_val)
                     insert_cols.append(f'"{header}"')
                     insert_vals.append(row_val)
