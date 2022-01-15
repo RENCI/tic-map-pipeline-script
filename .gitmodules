@@ -1,12 +1,12 @@
 [submodule "map-pipeline-schema"]
 	path = map-pipeline-schema
-	url = https://github.com/RENCI/map-pipeline-schema
+	url = git@github.com:/RENCI/map-pipeline-schema
 [submodule "map-pipeline"]
 	path = map-pipeline
-	url = https://github.com/RENCI/map-pipeline
+	url = git@github.com:/RENCI/map-pipeline
 [submodule "tx-utils"]
 	path = tx-utils
-	url = https://github.com/RENCI/tx-utils
+	url = git@github.com:/RENCI/tx-utils
 [submodule "test/redcap/tx-utils"]
 	path = test/redcap/tx-utils
-	url = https://github.com/RENCI/tx-utils
+	url = git@github.com:/RENCI/tx-utils
