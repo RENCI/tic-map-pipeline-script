@@ -17,7 +17,7 @@ import difflib
 from multiprocessing import Process, Value
 from pathlib import Path
 from stat import S_ISREG, ST_MODE, ST_MTIME
-
+import utils
 import redis
 import requests
 import schedule
@@ -28,8 +28,11 @@ from rq import Connection, Queue, Worker
 from sherlock import Lock
 from tx.functional.either import Left, Right
 
-import utils
 
+#most worker functions are found here in reload
+
+#lock, functions prepended by _ are not locked, they are called within a wrapper
+#of the same name (without the _) which do use the lock. this is important
 sherlock.configure(
     backend=sherlock.backends.REDIS,
     client=redis.StrictRedis(
@@ -208,7 +211,8 @@ def _restoreDatabase(ctx, ts):
 def dataDictionaryBackUpDirectory(ctx):
     return ctx["backupDir"] + "/redcap_data_dictionary"
 
-
+#data dictionaries are the mapping between local keys and redcap keys
+#they are downloaded and backed up for each db update
 def backUpDataDictionary(ctx):
     data_dictionary_backup_dir = dataDictionaryBackUpDirectory(ctx)
     data_dictionary_backup_path = data_dictionary_backup_dir + "/redcap_data_dictionary_export.json"
@@ -350,9 +354,8 @@ def insertDataIntoTable(ctx, table, f, kvp):
     with Lock(G_LOCK):
         return _insertDataIntoTable(ctx, table, f, kvp)
 
-
+#main write function
 def _insertDataIntoTable(ctx, table, f, kvp):
-    logger.info("inserting into table " + table)
     checkId(table)
     cp = runFile(
         lambda fn: subprocess.run(
@@ -375,6 +378,7 @@ def _insertDataIntoTable(ctx, table, f, kvp):
         f,
         kvp,
     )
+
     if cp.returncode != 0:
         logger.error("error inserting data into table " + table + " " + f + " " + str(cp.returncode))
         return False
@@ -385,9 +389,8 @@ def updateDataIntoTable(ctx, table, f, kvp):
     with Lock(G_LOCK):
         return _updateDataIntoTable(ctx, table, f, kvp)
 
-
+#update wrapper for the insert data function, it is performing effectively the same thing
 def _updateDataIntoTable(ctx, table, f, kvp):
-    logger.info("inserting into table " + table)
     checkId(table)
 
     conn = connect(
@@ -409,7 +412,7 @@ def checkId(i):
     if '"' in i:
         raise RuntimeError("invalid name {0}".format(i))
 
-
+#get the data type of a particular field, useful for validation
 def getColumnDataType(ctx, table, column):
     conn = connect(
         user=ctx["dbuser"],
@@ -441,10 +444,13 @@ def validateDateFormat(text):
             pass
     return False
 
+#main error handling function
+#TODO's: there's no robust way of differentiating global site uploads from study-wise site uploads
 def validateTable(ctx, tablename, tfname, kvp):
     with open(tfname, "r", newline="", encoding="latin-1") as tfi:
         reader = csv.reader(tfi)
         header = next(reader)
+
         seen = set()
         dups = []
         for x in header:
@@ -455,6 +461,7 @@ def validateTable(ctx, tablename, tfname, kvp):
         if len(dups) > 0:
             return [f"Duplicate header(s) in upload {dups}"]
         header2 = list(kvp.keys())
+
         _i = [a for a in header if a in header2]
         if len(_i) > 0:
             return [f"Duplicate header(s) in input {_i}"]
@@ -529,7 +536,8 @@ def validateTable(ctx, tablename, tfname, kvp):
                                 errors.append(f"Cell {cellLetter}{i} must be a decimal number")
                         elif "date" in cellDataType:
                             if not validateDateFormat(cell):
-                                errors.append(f"Cell {cellLetter}{i} must be a date in the format MM-DD-YYYY)")
+                                errors.append(f"Cell {cellLetter}{i} must be a date in the format MM-DD-YYYY "
+                                              f"or MM/DD/YYYY)")
                         elif "bool" in cellDataType:
                             if cell.lower() not in ['true', 'false', 'yes', 'no']:
                                 errors.append(f"Cell {cellLetter}{i} must be a true or false value")
@@ -550,13 +558,16 @@ def updateDataIntoTableColumn(ctx, table, column, f, kvp):
 
 
 def _updateDataIntoTableColumn(ctx, table, column, f, kvp):
-    logger.info("inserting into table " + table + " with column " + column)
+    """
+    This function is updated to use both siteId and ProposalID to determine whether to do update
+    (delete followed by insert) or insert without delete since there could be multiple proposals per site
+    and we don't want to update those site rows with different proposal ids in the existing database.
+    """
     checkId(table)
     checkId(column)
     dt = getColumnDataType(ctx, table, column)
 
     updated = set()
-
     if len(kvp) == 0:
         add_headers = add_data = []
     else:
@@ -589,9 +600,32 @@ def _updateDataIntoTableColumn(ctx, table, column, f, kvp):
         for row in reader:
             row2 = row + add_data
             val = fn(row2[index])
-            if val not in updated:
-                cursor.execute('delete from "{0}" where "{1}" = %s'.format(table, column), (val,))
-                updated.add(val)
+            if column == 'siteId':
+                if 'ProposalID' in headers2:
+                    add_column = 'ProposalID'
+                else:
+                    add_column = None
+            elif column == 'ProposalID':
+                if 'siteId' in headers2:
+                    add_column = 'siteId'
+                else:
+                    add_column = None
+            else:
+                add_column = None
+            if not add_column:
+                # only check column without need of considering siteId-ProposalID pair
+                if val not in updated:
+                    cursor.execute('delete from "{0}" where "{1}" = %s'.format(table, column), (val,))
+                    updated.add(val)
+            else:
+                # need to consider siteID-ProposalID pair
+                add_index = headers2.index(add_column)
+                add_val = fn(row2[add_index])
+                combined_val = '{0}-{1}'.format(str(val), str(add_val))
+                if combined_val not in updated:
+                    cursor.execute('delete from "{0}" where "{1}" = {2} and "{3}" = %s'.format(table, column, val,
+                                                                                               add_column), (add_val,))
+                    updated.add(combined_val)
 
     cursor.close()
     conn.commit()
@@ -636,7 +670,6 @@ def etl(ctx):
     if os.path.isdir("data/tables"):
         for f in os.listdir("data/tables"):
             os.remove("data/tables/" + f)
-    # logger.info("THIS IS THE FILE THAT IS GOING TO BE READ", ctx["dataInputFilePath"])
     cp = subprocess.run(
         [
             "spark-submit",

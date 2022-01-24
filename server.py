@@ -24,22 +24,29 @@ from tx.functional.either import Left, Right
 import reload
 import utils
 
+#connection to redis container
 redis_conn = redis.StrictRedis(host=os.environ["REDIS_QUEUE_HOST"], port=int(os.environ["REDIS_QUEUE_PORT"]), db=int(os.environ["REDIS_QUEUE_DB"]))
+
+#initialize a queue with the redis connection
 q = Queue(connection=redis_conn)
 
+#maximum task time
 TASK_TIME=int(os.environ["TASK_TIME"])
 
 logger = utils.getLogger(__name__)
 
+#wrapper
 def handleTableFunc(handler, args, tfname):
     try:
         handler(*args)
     finally:
         os.unlink(tfname)
 
+#pipeline api serving
 def server(ctx):
     app = Flask(__name__)
 
+    #create a backup object
     @app.route("/backup", methods=['GET', 'POST'])
     def backup():
         if request.method == 'GET':
@@ -47,6 +54,7 @@ def server(ctx):
         else:
             return postBackup(ctx)
         
+    #retrieve existing backup
     def getBackup(ctx):
         dirpath = ctx["backupDir"]
         entries = ((os.path.join(dirpath, fn), fn) for fn in os.listdir(dirpath))
@@ -67,11 +75,13 @@ def server(ctx):
         pDeleteBackup = q.enqueue(reload.deleteBackup, args=[ctx, ts], job_timeout=TASK_TIME)        
         return json.dumps(pDeleteBackup.id)
     
+    #restore from existing backup
     @app.route("/restore/<string:ts>", methods=['POST'])
     def restore(ts):
         pRestore = q.enqueue(reload.restoreDatabase, args=[ctx, ts], job_timeout=TASK_TIME)
         return json.dumps(pRestore.id)
     
+    #sync with redcap data, this is a particularily expensive task
     @app.route("/sync", methods=['POST'])
     def sync():
         pSync = q.enqueue(reload.entrypoint, args=[ctx], kwargs={
@@ -79,6 +89,7 @@ def server(ctx):
         }, job_timeout=TASK_TIME)
         return json.dumps(pSync.id)
 
+    #handle uploaded files
     def uploadFile():
         tf = tempfile.NamedTemporaryFile(delete=False)
         tf2 = tempfile.NamedTemporaryFile(delete=False)
@@ -130,21 +141,26 @@ def server(ctx):
             logger.info("post table")
             return handleTable(reload.insertDataIntoTable, ctx, tablename)
             
+    #validate uploaded tables and write them
     def handleTable(handler, ctx, tablename, *args):
         tfname, kvp = uploadFile()
+        #validation, this is the bulk of the error handling
         error = reload.validateTable(ctx, tablename, tfname, kvp)
         if error != None:
             return json.dumps(error), 400
         else:
+            #TODO: propagate db write errors up to this scope
             pTable = q.enqueue(handleTableFunc, args=[handler, [ctx, tablename, *args, tfname, kvp], tfname], job_timeout=TASK_TIME)
             return json.dumps(pTable.id)
 
+    #global and study-wise csv uploads
     @app.route("/table/<string:tablename>/column/<string:columnname>", methods=["POST"])
     def tableColumn(tablename, columnname):
         if request.method == "POST":
             logger.info("post incremental update table")
             return handleTable(reload.updateDataIntoTableColumn, ctx, tablename, columnname)
-            
+
+    #handle tasks in redis  
     @app.route("/task", methods=["GET"])
     def task():
         startedjr = StartedJobRegistry("default", connection=redis_conn)
