@@ -14,6 +14,7 @@ from multiprocessing import Process
 from pathlib import Path
 from stat import S_ISREG, ST_MTIME, ST_MODE
 from flask import Flask, request
+from flask_cors import CORS
 import redis
 from rq import Queue
 from rq.registry import StartedJobRegistry, FinishedJobRegistry, FailedJobRegistry, DeferredJobRegistry
@@ -45,7 +46,8 @@ def handleTableFunc(handler, args, tfname):
 #pipeline api serving
 def server(ctx):
     app = Flask(__name__)
-
+    if os.environ.get("LOCAL_ENV", 'false').lower() == 'true':
+        CORS(app)
     #create a backup object
     @app.route("/backup", methods=['GET', 'POST'])
     def backup():
