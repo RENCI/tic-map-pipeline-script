@@ -147,3 +147,15 @@ update table
 POST /table/<table>/column/<column>
 ```
 with file `data` in csv with header in utf-8 encoding or json, and `json` for additional columns, and `content-type` for content type of the data, `has_comments` whether it has comments
+
+## Procedures to run the TIC pipeline
+
+- Install the TIC pipeline software on your computer
+  - get docker installed on your computer. See [here](https://docs.docker.com/get-docker/) for instructions.
+  - In tic-map-pipeline-script directory, Run `docker build . -t <pipeline_image_with_tag>` to build a pipeline docker image. You can replace <pipeline_image_with_tag> with the image name and tag you want, e.g., replacing it with txscience/ctmd-pipeline-reload:v2.5.
+  - 
+- Translate a Redcap codebook and dataset into structural data that can be searched and visualized
+- Set up data filters
+- Update mapping.json
+- Transform data with new filters/mapping/schema
+- How to contribute
