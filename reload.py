@@ -680,7 +680,7 @@ def etl(ctx):
             "--master",
             "local[*]",
             "--class",
-            "tic.Transform2",
+            "tic.Transform",
             ctx["assemblyPath"],
             "--mapping_input_file",
             ctx["mappingInputFilePath"],
@@ -843,6 +843,7 @@ def entrypoint(
                 logger.error("pipeline encountered an error when inserting data" + str(e))
 
         if one_off:
+            # run data sync
             try:
                 _runPipeline(ctx)
             except Exception as e:
