@@ -278,7 +278,7 @@ def _createTables(ctx):
     )
     conn.autocommit = True
     cursor = conn.cursor()
-    with open("data/tables.sql", encoding="latin-1") as f:
+    with open("/data/tables.sql", encoding="latin-1") as f:
         for line in f:
             logger.info("executing " + line)
             cursor.execute(line)
