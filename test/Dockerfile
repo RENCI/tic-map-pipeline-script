@@ -1,4 +1,4 @@
-FROM ctmd-pipeline-reload:v2.1
+FROM txscience/ctmd-pipeline-reload:v2.5
 
 RUN mkdir backup
 RUN pip3 install pytest hypothesis pyyaml pytest-timeout tx-functional DeepDiff
@@ -25,6 +25,7 @@ COPY filter3 filter3
 COPY block1 block1
 COPY block2 block2
 COPY block3 block3
+COPY HEAL-data-mapping/mapping.json /
 COPY add add
 
 WORKDIR test
