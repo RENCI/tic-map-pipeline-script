@@ -16,7 +16,9 @@ docker build
 
 
 ```
-cd test
+cd tic-map-pipeline-script
+docker build . -t ctmd-pipeline-reload:v2.5
+cd tic-map-pipeline-script/test
 docker-compose down
 docker-compose up --build --exit-code-from pipeline
 ```
