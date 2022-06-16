@@ -591,7 +591,7 @@ tables_yaml='''
 '''
 
 def test_tables():
-    tabs = yaml.load(tables_yaml)
+    tabs = yaml.load(tables_yaml, Loader=yaml.FullLoader)
     for tab in tabs:
         do_test_table(tab["table"], tab["columns"])
 
