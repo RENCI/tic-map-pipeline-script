@@ -17,7 +17,8 @@ docker build
 
 ```
 cd test
-docker-compose up --build -V
+docker-compose down
+docker-compose up --build --exit-code-from pipeline
 ```
 ## environment
 
