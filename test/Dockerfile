@@ -1,4 +1,4 @@
-FROM txscience/ctmd-pipeline-reload:v2.5
+FROM ctmd-pipeline-reload:v2.5
 
 RUN mkdir backup
 RUN pip3 install pytest hypothesis pyyaml pytest-timeout tx-functional DeepDiff
