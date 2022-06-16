@@ -48,6 +48,8 @@ services:
       SPARK_EXECUTOR_MEMORY: $SPARK_EXECUTOR_MEMORY
       PAUSE: $PAUSE
       PRINT_REQUEST: $PRINT_REQUEST
+    volumes:
+      - ./mapping.json:/mapping.json
     depends_on:
       - db
       - redcap
