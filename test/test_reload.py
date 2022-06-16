@@ -134,9 +134,8 @@ def test_etl():
                 assert ret
                 assert os.path.isfile("/data/tables/Proposal")
                 with open("/data/tables/Proposal") as f:
-                    print(f.readlines(), flush=True)
-                    print(sum(1 for _ in f), flush=True)
-                    assert sum(1 for _ in f) == 2
+                    content = f.readlines()
+                    assert sum(1 for _ in content) == 2
 
 
 def test_sync(cleanup = True):
