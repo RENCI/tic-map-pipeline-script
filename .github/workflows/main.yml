@@ -22,7 +22,7 @@ jobs:
         run: |
           cd $GITHUB_WORKSPACE
           git submodule update --init --recursive
-          docker build . -t ctmd-pipeline-reload:v2.1
+          docker build . -t ctmd-pipeline-reload:v2.5
           cd test
           docker-compose up --build --exit-code-from pipeline
 
