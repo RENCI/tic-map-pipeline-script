@@ -1,16 +1,28 @@
 # tic-map-pipeline-script
 
-### How to build ###
+### How to build a docker image ###
 
 ```
 git submodule update --init
 ```
 
 ```
-docker build
+docker build . -t txscience/ctmd-pipeline-reload:v2.5
 ```
+where `txscience/ctmd-pipeline-reload:v2.5` is the pipeline image name 
+and version tag to build. Update the image name and version tag as needed 
+as part of the CTMD release process. This pipeline image tag must 
+correspond to [this line in docker-compose.prod.yml](https://github.com/RENCI/ctmd-dashboard/blob/master/docker-compose.prod.yml#L19) 
+and [this line in docker-compose.yml](https://github.com/RENCI/ctmd-dashboard/blob/master/docker-compose.yml#L19)
+of [CTMD Dashboard](https://github.com/RENCI/ctmd-dashboard/) in order 
+for the latest built pipeline image to be used for CTMD Dashboard. 
 
-
+### How to push docker image to dockerhub
+```
+docker login --username=your_dockerhub_username
+docker push txscience/ctmd-pipeline-reload:v2.5
+```
+Update the pipeline image tag to be pushed as needed. 
 
 ### How to run test ###
 
