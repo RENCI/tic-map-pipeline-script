@@ -6,7 +6,7 @@ branches:
     - master
 
 before_install:
-  - docker build . -t pmd-pipeline-reload:0.2.24
+  - docker build . -t ctmd-pipeline-reload:v2.5
 
 script:
   - cd test
