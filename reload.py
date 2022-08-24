@@ -829,25 +829,24 @@ def entrypoint(
     logger.info("insert_data=" + str(insert_data))
     logger.info("one_off=" + str(one_off))
     logger.info("reload=" + str(reload))
-    with Lock(G_LOCK):
-        if create_tables:
-            try:
-                _createTables(ctx)
-            except Exception as e:
-                logger.error("pipeline encountered an error when creating tables" + str(e))
+    if create_tables:
+        try:
+            createTables(ctx)
+        except Exception as e:
+            logger.error("pipeline encountered an error when creating tables" + str(e))
 
-        if insert_data:
-            try:
-                _insertData(ctx)
-            except Exception as e:
-                logger.error("pipeline encountered an error when inserting data" + str(e))
+    if insert_data:
+        try:
+            insertData(ctx)
+        except Exception as e:
+            logger.error("pipeline encountered an error when inserting data" + str(e))
 
-        if one_off:
-            # run data sync
-            try:
-                _runPipeline(ctx)
-            except Exception as e:
-                logger.error("pipeline encountered an error during one off run" + str(e))
+    if one_off:
+        # run data sync
+        try:
+            runPipeline(ctx)
+        except Exception as e:
+            logger.error("pipeline encountered an error during one off run" + str(e))
 
     if reload:
         schedule.every().day.at(schedule_run_time).do(lambda: runPipeline(ctx))
