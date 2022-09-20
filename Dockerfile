@@ -59,7 +59,7 @@ RUN wget https://archive.apache.org/dist/spark/spark-2.4.8/spark-2.4.8-bin-hadoo
 # RUN wget http://apache.spinellicreations.com/spark/spark-2.4.7/spark-2.4.7-bin-hadoop2.7.tgz && echo "0F5455672045F6110B030CE343C049855B7BA86C0ECB5E39A075FF9D093C7F648DA55DED12E72FFE65D84C32DCD5418A6D764F2D6295A3F894A4286CC80EF478  spark-2.4.7-bin-hadoop2.7.tgz" | sha512sum -c -
 
 RUN tar zxvf spark-2.4.8-bin-hadoop2.7.tgz
-ENV PATH="/spark-3.3.0-bin-hadoop2/bin:${PATH}"
+ENV PATH="/spark-2.4.8-bin-hadoop2/bin:${PATH}"
 # set to 1 to reload data from redcap database
 ENV RELOAD_DATABASE=1
 # set to 1 for one off reload
