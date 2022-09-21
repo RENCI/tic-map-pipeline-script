@@ -1,5 +1,6 @@
 FROM python:3.7.3-stretch
 
+RUN pip install -U pip
 RUN pip install flask pyopenssl
 
 COPY record.json record.json
