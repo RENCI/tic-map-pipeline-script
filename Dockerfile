@@ -10,7 +10,7 @@
 # REDCAP_URL_BASE default should be set to https://redcap.vanderbilt.edu/api/
 # SCHEDULE_RUN_TIME default should be set to 00:00
 # need to mount backup dir to POSTGRES_DUMP_PATH
-FROM ubuntu:22.04 AS transform
+FROM ubuntu:20.04 AS transform
 
 RUN apt-get update && apt-get install -y wget openjdk-8-jdk gnupg
 RUN apt-get update && apt-get install curl -y
@@ -19,11 +19,11 @@ RUN echo "deb https://repo.scala-sbt.org/scalasbt/debian /" | tee -a /etc/apt/so
 RUN curl -sL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x2EE0EA64E40A89B84B2DF73499E82A75642AC823" | apt-key add
 # RUN apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2EE0EA64E40A89B84B2DF73499E82A75642AC823
 RUN apt-get update && apt-get install -y sbt
-COPY ./map-pipeline ./map-pipeline
+COPY ["map-pipeline", "map-pipeline"]
 WORKDIR map-pipeline
 RUN sbt assembly
 
-FROM ubuntu:22.04
+FROM ubuntu:20.04
 
 RUN apt-get update && apt-get install -y wget curl
 
@@ -37,11 +37,11 @@ RUN mkdir data
 
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y wget gnupg git tzdata
 
-RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ jammy-pgdg main" | tee -a /etc/apt/sources.list.d/pgdg.list
+RUN echo "deb http://apt.postgresql.org/pub/repos/apt/ bionic-pgdg main" | tee -a /etc/apt/sources.list.d/pgdg.list
 
 RUN wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add -
 
-RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y python3-pip wget openjdk-8-jdk postgresql-client-15 libmemcached-dev
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y python3-pip wget openjdk-8-jdk postgresql-client-11 libmemcached-dev
 
 
 RUN apt-get install pkg-config libicu-dev -y
