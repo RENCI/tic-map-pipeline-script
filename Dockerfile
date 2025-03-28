@@ -48,7 +48,7 @@ RUN apt-get install pkg-config libicu-dev -y
 RUN pip3 install --no-binary=:pyicu: pyicu
 RUN pip3 install csvkit
 
-RUN pip3 install  schedule pandas psycopg2-binary  requests flask flask-cors redis rq oslash==0.5.1 tx-functional
+RUN pip3 install  schedule pandas psycopg2-binary  requests flask flask-cors redis rq oslash==0.5.1
 RUN pip3 install git+https://github.com/vaidik/sherlock.git@77742ba91a24f75ee62e1895809901bde018654f
 
 RUN wget https://archive.apache.org/dist/spark/spark-2.4.8/spark-2.4.8-bin-hadoop2.7.tgz
