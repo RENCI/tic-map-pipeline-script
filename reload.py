@@ -26,7 +26,7 @@ from flask import Flask, request
 from psycopg2 import connect
 from rq import Connection, Queue, Worker
 from sherlock import Lock
-from tx.functional.either import Left, Right
+
 
 
 #most worker functions are found here in reload

@@ -21,7 +21,6 @@ from rq.registry import StartedJobRegistry, FinishedJobRegistry, FailedJobRegist
 import tempfile
 import logging
 import csv
-from tx.functional.either import Left, Right
 import reload
 import utils
 
