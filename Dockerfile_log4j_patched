@@ -16,7 +16,7 @@ FROM txscience/ctmd-pipeline-reload:v2.11
 
 WORKDIR /
 
-COPY ["reload4j-1.2.26.jar", "/spark-2.4.8-bin-hadoop2.7/jars/log4j-1.2.26.jar"]
+COPY ["reload4j-1.2.26.jar", "/spark-2.4.8-bin-hadoop2.7/jars/log4j-1.2.17.jar"]
 COPY --from=transform ["map-pipeline/target/scala-2.11/TIC preprocessing-assembly-0.2.0.jar", "TIC preprocessing-assembly.jar"]
 
 
